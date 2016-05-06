@@ -72,27 +72,27 @@ void SemiTcpAgent::backoffHandler()
 {
 	if(p_to_mac->congested())
 	{
-		inc_cw(); 	// backoff if congested
-		backoffTimer_.resched(cw_);
+		inr_cw(); 	// backoff if congested
+		backoffTimer_.resched(cw_ * timeslot);
 	}
 	else
 	{
 		int tmpseqno = -1;
-        seqnolist.sort();
-        if ( !seqnolist.empty() ) { 	//remove the acked packets
+        rtxList.sort();
+        if ( !rtxList.empty() ) { 	//remove the acked packets
                 do {
-                        tmpseqno = *seqnolist.begin();
-                        seqnolist.remove ( tmpseqno );
-                } while ( tmpseqno <= last_ack_ && !seqnolist.empty() );
+                        tmpseqno = *rtxList.begin();
+                        rtxList.remove ( tmpseqno );
+                } while ( tmpseqno <= last_ack_ && !rtxList.empty() );
         }
         if ( tmpseqno >= 0 && tmpseqno > highest_ack_ ) {
                 output ( tmpseqno, 0 ); 
         } else { 	
-                output ( t_seqno_, 0 );
+                output ( t_seqno_, 0 ); 	// send a new packet
         }
         
-        reset_cw();
-		backoffTimer_.resched(cw_);
+        decr_cw(); 	// maybe decrease cw_ window is the better way?
+		backoffTimer_.resched(cw_ * timeslot);
 	}
 }
 
@@ -268,17 +268,6 @@ void SemiTcpAgent::newack ( Packet* pkt )
         assert ( cwnd_ == -1 );
 }
 
-void SemiTcpAgent::inr_cw()
-{
-	if (cw_ < 64)
-		cw_ << 1;
-}
-
-void SemiTcpAgent::reset_cw()
-{
-	cw_ = 1;
-}
-
 void SemiTcpAgent::recv ( Packet *pkt, Handler* )
 {
         hdr_tcp *tcph = hdr_tcp::access ( pkt );
@@ -331,8 +320,8 @@ void SemiTcpAgent::timeout ( int tno )
 
         ///reset_rtx_timer(backoff)
         reset_rtx_timer ( 0 );
-        if ( find ( seqnolist.begin(), seqnolist.end(), highest_ack_ + 1 ) == seqnolist.end() )
-                seqnolist.push_back ( highest_ack_ + 1 );
+        if ( find ( rtxList.begin(), rtxList.end(), highest_ack_ + 1 ) == rtxList.end() )
+                rtxList.push_back ( highest_ack_ + 1 );
 }
 
 /*
@@ -341,8 +330,10 @@ void SemiTcpAgent::timeout ( int tno )
  */
 void SemiTcpAgent::send_much ( int force, int reason, int maxburst )
 {
-        if ( !p_to_mac->congested() ) {
-                output ( t_seqno_, reason );
+        if (!p_to_mac->congested()) {
+			output ( t_seqno_, reason );
+			decr_cw();
+			backoffTimer_.resched(cw_ * timeslot);
         }
 }
 

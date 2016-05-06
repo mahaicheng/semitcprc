@@ -62,7 +62,7 @@ class TcpBackoffTimer : public TimerHandler
 {
 public:
 	TcpBackoffTimer(SemiTcpAgent *a) : a_(a) { }
-protected:
+private:
 	virtual void expire(Event *e);
 	SemiTcpAgent *a_;
 };
@@ -75,25 +75,37 @@ public:
         int command ( int argc, const char*const* argv );
 
 private:
-		TcpBackoffTimer backoffTimer_;
-		int cw_; 	//backoff window
-		void inr_cw();
-		void reset_cw();
+		void inr_cw()
+		{
+			if (cw_ < 64)
+				cw_ << 1;
+		}
+		void decr_cw()
+		{
+			if (cw_ > 1)
+				cw_ >> 1;
+		}
+		void reset_cw()
+		{
+			cw_ = 1;
+		}
 		
         virtual void recv ( Packet *pkt, Handler* );
         virtual void reset();
         virtual void timeout ( int tno );
         virtual void output ( int seqno, int reason = 0 );
         virtual void recv_newack_helper ( Packet *pkt );
-        void newack ( Packet* pkt );
         virtual void send_much ( int force, int reason, int maxburst );
         virtual void set_rtx_timer();
+		
+		void newack ( Packet* pkt );
+        void reset_rtx_timer ( int backoff );
 
         Mac802_11* p_to_mac;
-
-        list<int> seqnolist; //packets needed to be retransmitted
-        void reset_rtx_timer ( int backoff );
+        list<int> rtxList; //packets needed to be retransmitted
         list<int> unacked; //Packets have sent but unacked
-        
+        TcpBackoffTimer backoffTimer_;
+		int cw_; 
+		double timeslot;
 };
 #endif

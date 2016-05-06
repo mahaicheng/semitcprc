@@ -762,7 +762,7 @@ void TcpAgent::output(int seqno, int reason)
 }
 
 /*
- * Must convert bytes into packets for one-way TCPs.
+ * NOTE: Must convert bytes into packets for one-way TCPs.
  * If nbytes == -1, this corresponds to infinite send.  We approximate
  * infinite by a very large number (TCP_MAXSEQ).
  */

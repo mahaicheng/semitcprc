@@ -65,7 +65,8 @@ public:
 SemiTcpAgent::SemiTcpAgent() 
 	: backoffTimer_(this), 
 	p_to_mac(NULL), 
-	cw_(1) 
+	cw_(1),
+	timeslot(0.00002) // TODO: need to define the proper timeslot?
 { }
 
 void SemiTcpAgent::backoffHandler()
@@ -73,7 +74,7 @@ void SemiTcpAgent::backoffHandler()
 	if(p_to_mac->congested())
 	{
 		inr_cw(); 	// backoff if congested
-		backoffTimer_.resched(cw_ * timeslot);
+		backoffTimer_.resched((Random::random() % cw_) * timeslot);
 	}
 	else
 	{
@@ -92,7 +93,7 @@ void SemiTcpAgent::backoffHandler()
         }
         
         decr_cw(); 	// maybe decrease cw_ window is the better way?
-		backoffTimer_.resched(cw_ * timeslot);
+		backoffTimer_.resched((Random::random() % cw_) * timeslot);
 	}
 }
 
@@ -101,7 +102,7 @@ int SemiTcpAgent::command ( int argc, const char*const* argv )
         if ( argc == 3 && strcmp ( argv[1], "semitcp-get-mac" ) == 0 ) 
 		{
                 p_to_mac = ( Mac802_11* ) TclObject::lookup ( argv[2] );		
-				return p_to_mac == nullptr ? TCL_ERROR : TCL_OK;
+				return p_to_mac == NULL ? TCL_ERROR : TCL_OK;
 
         } else if ( argc == 2 && strcmp ( argv[1], "get-highest-acked" ) == 0 ) 
 		{
@@ -318,10 +319,15 @@ void SemiTcpAgent::timeout ( int tno )
 
         assert ( cwnd_ == -1 );
 
-        ///reset_rtx_timer(backoff)
         reset_rtx_timer ( 0 );
         if ( find ( rtxList.begin(), rtxList.end(), highest_ack_ + 1 ) == rtxList.end() )
                 rtxList.push_back ( highest_ack_ + 1 );
+		
+		inr_cw();
+		if (backoffTimer_.status() == TIMER_IDLE)
+		{
+			backoffTimer_.resched((Random::random() % cw_) * timeslot);
+		}
 }
 
 /*
@@ -330,11 +336,16 @@ void SemiTcpAgent::timeout ( int tno )
  */
 void SemiTcpAgent::send_much ( int force, int reason, int maxburst )
 {
-        if (!p_to_mac->congested()) {
-			output ( t_seqno_, reason );
+        if (!p_to_mac->congested()) 
+		{
 			decr_cw();
-			backoffTimer_.resched(cw_ * timeslot);
         }
+        else
+		{
+			inr_cw();
+		}
+		
+		backoffTimer_.resched((Random::random() % cw_) * timeslot);
 }
 
 void SemiTcpAgent::reset_rtx_timer ( int backoff )

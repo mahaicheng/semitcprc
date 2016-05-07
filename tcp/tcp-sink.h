@@ -46,6 +46,8 @@ class Mac802_11;
 using namespace std;
 #endif
 
+#define MAXACKQ_LEN 500 ///the size of transport layer queue
+
 /* max window size */
 // #define MWS 1024  
 #define MWS 64
@@ -79,7 +81,7 @@ protected:
 	int wndmask_;		/* window mask - either MWM or HS_MWM - Sylvia */ 
 	int ecn_unacked_;	/* ECN forwarded to sender, but not yet
 				 * acknowledged. */
-	int *seen_;		/* array of packets seen */
+	int *seen_;		/* array of packets seen (what is the "seen" means? )*/
 	double ts_to_echo_;	/* timestamp to echo to peer */
 	int is_dup_;		// A duplicate packet.
 public:
@@ -91,8 +93,8 @@ class SackStack;
 class Sacker : public Acker, public TclObject {
 public: 
 	Sacker() : base_nblocks_(-1), sf_(0) { };
-	~Sacker();
-	void append_ack(hdr_cmn*, hdr_tcp*, int oldSeqno) const;
+	virtual ~Sacker();
+	virtual void append_ack(hdr_cmn*, hdr_tcp*, int oldSeqno) const;
 	void reset();
 	void configure(TcpSink*);
 protected:
@@ -104,18 +106,27 @@ protected:
 #ifdef SEMITCP
 class ack_pkt    
 {
-  private:
+private:
 	Packet *ack_;
 	double time_;
-  public:
-	ack_pkt(Packet* p) {
+	
+public:
+	ack_pkt(Packet* p) 
+	{
+		if (p == NULL)
+			return;
+		
 		time_ = Scheduler::instance().clock();
 		ack_ = p;
 	}
-	Packet *ack() const {
+	
+	Packet* ack() const 
+	{
 		return ack_;
 	}
-	double time() const {
+	
+	double time() const 
+	{
 		return time_;
 	}
 };
@@ -128,15 +139,13 @@ public:
 	void reset();
 	int command(int argc, const char*const* argv);
 	TracedInt& maxsackblocks() { return max_sack_blocks_; }
-	#ifdef SEMITCP
-	//void send_down();
-	#endif
+
 protected:
 	void ack(Packet*);
 	virtual void add_to_ack(Packet* pkt);
 
-        virtual void delay_bind_init_all();
-        virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);
+    virtual void delay_bind_init_all();
+    virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);
 
 	Acker* acker_;
 	int ts_echo_bugfix_;
@@ -154,11 +163,9 @@ protected:
 					// for RFC2581-compliant gap-filling.
 	double lastreset_; 	/* W.N. used for detecting packets  */
 				/* from previous incarnations */
-#ifdef SEMITCP
 	int no_dupack; ///SEMIDEBUG
 	Mac802_11* p_to_mac;
-	queue<ack_pkt *> ack_q;
-	#endif
+	queue<ack_pkt> ack_q;
 };
 
 class DelAckSink;
@@ -174,9 +181,9 @@ protected:
 class DelAckSink : public TcpSink {
 public:
 	DelAckSink(Acker* acker);
-	void recv(Packet* pkt, Handler*);
+	virtual void recv(Packet* pkt, Handler*);
 	virtual void timeout(int tno);
-	void reset();
+	virtual void reset();
 protected:
 	double interval_;
 	DelayTimer delay_timer_;

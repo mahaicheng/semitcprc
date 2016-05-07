@@ -251,10 +251,6 @@ int TcpSink::command(int argc, const char*const* argv)
 			fprintf(stderr,"DEPRECIATED: resize_buffers\n");
 			return (TCL_OK);
 		}
-		if (strcmp(argv[1], "TCPSink_Info") == 0){
-		    TCPSink_Info();
-		    return (TCL_OK);
-		}
 	}
 #ifdef SEMITCP
 	if (argc == 3 && strcmp ( argv[1], "tcpsink-get-mac" ) == 0) {
@@ -278,47 +274,26 @@ void TcpSink::reset()
 
 void TcpSink::ack(Packet* opkt)
 {
-	hdr_tcp *otcp = hdr_tcp::access(opkt);
-	hdr_ip *oiph = hdr_ip::access(opkt);
+	hdr_tcp *otcph = hdr_tcp::access(opkt);
 	
 #ifdef SEMITCP
-	if(no_dupack && otcp->seqno() > acker_->Seqno()+1) 	//not the next packet should be received
+	if(no_dupack && otcph->seqno() > acker_->Seqno()+1) 	//not the next packet should be received
 	    return;
 #endif
-///SEMIDEBUG: No duplicated ACKs(actually, it will not send dupack but the selected
-	// single ack not the cumulative ack.)	
-	/*static int newerNumer = 0;
-	static int totalnewerNumber = 0;
-	static int lastSeqno = 0;
-	static int totalDrop = 0;
-		if(otcp->seqno() > acker_->Seqno()+1) 	
-		{
-		    newerNumer++;
-			return;
-		}
-		if(newerNumer > 0)
-		{
-		    totalnewerNumber += newerNumer;
-		    totalDrop++;
-fprintf(stderr, "totalDrop:%4d\tnewerNumer:%4d\tin:%4d\ttotalNewer:%4d\tduration:%4d\n", totalDrop, newerNumer, acker_->Seqno(), \
-totalnewerNumber, acker_->Seqno()-lastSeqno);
-		    newerNumer = 0;
-		    lastSeqno = acker_->Seqno();
-		}
-///End SEMIDEBUG*/
-	Packet* npkt = allocpkt();
-	// opkt is the "old" packet that was received
+
 	// npkt is the "new" packet being constructed (for the ACK)
+	Packet* npkt = allocpkt();
 	
 	double now = Scheduler::instance().clock();
 
-	hdr_tcp *ntcp = hdr_tcp::access(npkt);
+	hdr_tcp *ntcph = hdr_tcp::access(npkt);
 
 	if (qs_enabled_) {
 		// QuickStart code from Srikanth Sundarrajan.
 		hdr_qs *oqsh = hdr_qs::access(opkt);
+		hdr_ip *oiph = hdr_ip::access(opkt);
 		hdr_qs *nqsh = hdr_qs::access(npkt);
-	        if (otcp->seqno() == 0 && oqsh->flag() == QS_REQUEST) {
+	        if (otcph->seqno() == 0 && oqsh->flag() == QS_REQUEST) {
 	                nqsh->flag() = QS_RESPONSE;
 	                nqsh->ttl() = (oiph->ttl() - oqsh->ttl()) % 256;
 	                nqsh->rate() = (oqsh->rate() < MWS) ? oqsh->rate() : MWS;
@@ -330,32 +305,32 @@ totalnewerNumber, acker_->Seqno()-lastSeqno);
 
 
 	// get the tcp headers
-	#ifdef SEMITCP ///if "reason" is true, the ACK means acknowledging a single packet
-	if(otcp->seqno() > acker_->Seqno()+1) {
-		assert(ntcp->reason() == 0);
-		assert(otcp->seqno() != 0);
-		ntcp->reason() = 1; //single ack
-		ntcp->seqno() = otcp->seqno();
+	#ifdef SEMITCP 
+///if "reason" is true, the ACK means acknowledging a single packet
+	if(otcph->seqno() > acker_->Seqno()+1) {
+		assert(otcph->seqno() != 0);
+		ntcph->reason() = 1; //single ack
+		ntcph->seqno() = otcph->seqno();
 	} else {
-		ntcp->seqno() = acker_->Seqno();  // cumulative ack
+		ntcph->seqno() = acker_->Seqno();  // cumulative ack
 	}
 	#else
 	// get the cumulative sequence number to put in the ACK; this
 	// is just the left edge of the receive window - 1
-	ntcp->seqno() = acker_->Seqno();
+	ntcph->seqno() = acker_->Seqno();
 	#endif
 
-	ntcp->ts() = now; 	// timestamp the packet
+	ntcph->ts() = now; 	// timestamp of the packet
 
 	if (ts_echo_bugfix_)  /* TCP/IP Illustrated, Vol. 2, pg. 870 */
-		ntcp->ts_echo() = acker_->ts_to_echo();
+		ntcph->ts_echo() = acker_->ts_to_echo();
 	else
 	// echo the original's time stamp
-		ntcp->ts_echo() = otcp->ts();
+		ntcph->ts_echo() = otcph->ts();
 
-	hdr_ip* oip = hdr_ip::access(opkt);
-	hdr_ip* nip = hdr_ip::access(npkt); 	// get the ip headers
-	nip->flowid() = oip->flowid(); 	// copy the flow id
+	hdr_ip *oiph = hdr_ip::access(opkt);
+	hdr_ip *niph = hdr_ip::access(npkt);
+	niph->flowid() = oiph->flowid(); 	// copy the flow id
 	
 	hdr_flags* of = hdr_flags::access(opkt);
 	hdr_flags* nf = hdr_flags::access(npkt);
@@ -383,65 +358,42 @@ totalnewerNumber, acker_->Seqno()-lastSeqno);
 		 // specifications in the internet draft 
 		nf->ecnecho() = 1;
 	acker_->append_ack(hdr_cmn::access(npkt),
-			   ntcp, otcp->seqno());
-	add_to_ack(npkt); // the function is used in TcpAsymSink
+			   ntcph, otcph->seqno());
+	add_to_ack(npkt); // the function is used in TcpAsymSink, so nothing to do
 
-        // Andrei Gurtov
-        acker_->last_ack_sent_ = ntcp->seqno();
-        // printf("ACK %d ts %f\n", ntcp->seqno(), ntcp->ts_echo());
+    // Andrei Gurtov
+    acker_->last_ack_sent_ = ntcph->seqno();
 	
-#ifdef SEMITCP
 	///If the lower layer isn't congested, send the first packet in transport 
 	//layer down, otherwise buffer the new ACK. But actually, there is no need
 	// to push the ack packet to lower layer.
-	if(!p_to_mac->congested()) {
-		if(ack_q.size() > 0) {
-			Packet *pkt = ack_q.front()->ack();
+	if(!p_to_mac->congested()) 
+	{
+		if(ack_q.size() > 0) 
+		{
+			Packet *pkt = ack_q.front().ack();
 			hdr_tcp *tcph = hdr_tcp::access(pkt);
-			tcph->ts_echo() = tcph->ts_echo() + (now - ack_q.front()->time());
-			send(pkt, 0);
+			tcph->ts_echo() = tcph->ts_echo() + (now - ack_q.front().time());
+			send(pkt, NULL);
 			
-			delete ack_q.front();
 			ack_q.pop(); 	//pop_front()
 			
-			ack_pkt *tmp = new ack_pkt(npkt);
-			ack_q.push(tmp); //push_back()
-		} else
-			send(npkt, 0);
-	} else {
-		#define MAXACKQ_LEN 500 ///the size of transport layer queue
-		if(ack_q.size() >= MAXACKQ_LEN) { //overflow
-			drop(ack_q.front()->ack(), "ACK_Q_FULL");
-			delete ack_q.front();
-			ack_q.pop();
-		}
-		ack_pkt *tmp = new ack_pkt(npkt);
-		ack_q.push(tmp);
+			ack_q.push(ack_pkt(npkt)); //push_back a new 
+		} 
+		else 	// no buffered ACK packet
+			send(npkt, NULL);
+	} 
+	else  	//local congested
+	{
+		ack_q.push(ack_pkt(npkt));
 	}
-#else
-	send(npkt, 0);
-#endif
-	// send it
+	
+	Packet::free(opkt); 	// the data packet is no need
 }
-#ifdef SEMITCP
-///Called by lower layer to send ACKs down when the lower layer is not congested
-/*void TcpSink::send_down()
-{ 
-	if(!p_to_mac->congested() && ack_q.size() > 0) {
-		const double now = Scheduler::instance().clock();
-		Packet *pkt = ack_q.front()->ack(); //only need to send the newest ACK
-		hdr_tcp *tcph = hdr_tcp::access(pkt);
-		tcph->ts_echo() = tcph->ts_echo() + (now - ack_q.front()->time());
-		delete ack_q.front();
-		ack_q.pop();
-		send(pkt, 0); 	// send the oldest ACK. But maybe send the newest
-				//ack is the best.
-	}
-}*/
-#endif
+
 void TcpSink::add_to_ack(Packet*)
 {
-	return;
+	return; 	// nothing to do
 }
 
 
@@ -460,7 +412,7 @@ void TcpSink::recv(Packet* pkt, Handler*)
 	// update the timestamp to echo
 	acker_->update_ts(th->seqno(),th->ts(),ts_echo_rfc1323_);
 	
-      	numToDeliver = acker_->update(th->seqno(), numBytes);
+    numToDeliver = acker_->update(th->seqno(), numBytes);
 	// update the recv window; figure out how many in-order-bytes
 	// (if any) can be removed from the window and handed to the
 	// application
@@ -470,7 +422,6 @@ void TcpSink::recv(Packet* pkt, Handler*)
 	}
 	// send any packets to the application
       	ack(pkt); // make an ACK of the packet
-	Packet::free(pkt); 	// remove it from the system
 }
 
 static class DelSinkClass : public TclClass {

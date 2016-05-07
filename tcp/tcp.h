@@ -112,7 +112,7 @@ struct hdr_tcp {
  * 0.01 for new window algorithms,
  */
 
-#define NUMDUPACKS 3		/* This is no longer used.  The variable */
+//#define NUMDUPACKS 3		/* This is no longer used.  The variable */
 				/* numdupacks_ is used instead. */
 #define TCP_MAXSEQ 1073741824   /* Number that curseq_ is set to for */
 				/* "infinite send" (2^30)            */
@@ -175,7 +175,8 @@ class TcpAgent : public Agent {
 public:
 	TcpAgent();
 	~TcpAgent() {free(tss);}
-        virtual void recv(Packet*, Handler*);
+	
+    virtual void recv(Packet*, Handler*);
 	virtual void timeout(int tno);
 	virtual void timeout_nonrtx(int tno);
 	int command(int argc, const char*const* argv);

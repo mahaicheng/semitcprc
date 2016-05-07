@@ -56,7 +56,7 @@ Packet* PacketQueue::deque()
         Packet* p = head_;
         head_= p->next_; // nullptr if p == tail_
     if(p == tail_)
-        head_= tail_= nullptr;
+        head_= tail_= NULL;
 	
         --len_;
         bytes_ -= hdr_cmn::access(p)->size();
@@ -148,7 +148,7 @@ void Queue::recv(Packet* p, Handler* /*not used*/)
 		 * previously empty!  (e.g., RED can do this.)
 		 */
 		p = deque();
-		if (p != nullptr) {
+		if (p != NULL) {
 			utilUpdate(last_change_, now, blocked_);
 			last_change_ = now;
 			blocked_ = 1;
@@ -235,7 +235,7 @@ void Queue::resume()
 	double now = Scheduler::instance().clock();
 	Packet* p = deque();
 
-	if (p != nullptr) {
+	if (p != NULL) {
 		target_->recv(p, &qh_);
 	} else {
 		if (unblock_on_resume_) {

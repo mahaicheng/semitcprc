@@ -1,4 +1,4 @@
-
+﻿
 /*
  * dsragent.h
  * Copyright (C) 2000 by the University of Southern California
@@ -136,7 +136,6 @@ public:
   ~DSRAgent();
 #ifdef SEMITCP
   const int length_all();
-  void send_down(bool force = false);
 #endif
 private:
 #ifdef SEMITCP

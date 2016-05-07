@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 1997 Regents of the University of California.
  * All rights reserved.
@@ -562,7 +562,7 @@ inline void Packet::init(Packet* p)
 inline Packet* Packet::alloc()
 {
 	Packet* p = free_;
-	if (p != 0) {
+	if (p != NULL) {
 		assert(p->fflag_ == FALSE);
 		free_ = p->next_;
 		assert(p->data_ == 0);

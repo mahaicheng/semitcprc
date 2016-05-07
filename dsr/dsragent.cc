@@ -1,4 +1,4 @@
-
+﻿
 /*
  * dsragent.cc
  * Copyright (C) 2000 by the University of Southern California
@@ -236,9 +236,6 @@ DSRAgent::dropSendBuff(SRPacket &p)
   drop(p.pkt, DROP_RTR_QTIMEOUT);
   p.pkt = 0;
   p.route.reset();
-  #ifdef SEMITCP
-  send_down(true);
-  #endif
 }
 
 void
@@ -346,8 +343,8 @@ public:
 ---------------------------------------------------------------------------*/
 DSRAgent::DSRAgent(): Agent(PT_DSR), request_table(128), route_cache(NULL),
 #ifdef SEMITCP
-p_to_semitcp(0),// p_to_mac(0),
-p_to_tcpsink(0),
+p_to_semitcp(NULL),// p_to_mac(0),
+p_to_tcpsink(NULL),
 #endif
 send_buf_timer(this), flow_table(), ars_table()
 {
@@ -433,7 +430,6 @@ DSRAgent::testinit()
 				 hsr.num_addrs()), 0.0, ID(3,::IP));
     }
 }
-
 
 int
 DSRAgent::command(int argc, const char*const* argv)
@@ -1550,10 +1546,6 @@ DSRAgent::getRouteForPacket(SRPacket &p, bool retry)
 			  drop(p.pkt, DROP_RTR_NO_ROUTE);
 			  p.pkt = 0;
 			  
-			  #ifdef SEMITCP
-			  send_down(true);	//added by mhc 2010-5-1
-			  #endif
-
 			  // dump the route request packet we made up
 			  Packet::free(rrp.pkt);
 			  rrp.pkt = 0;
@@ -2341,9 +2333,6 @@ DSRAgent::undeliverablePkt(Packet *pkt, int mine)
   if(dsragent_salvage_with_cache == 0) {
 	  assert(mine);
 	  drop(pkt, DROP_RTR_NO_ROUTE);  
-	  #ifdef SEMITCP
-	  send_down(true);
-	  #endif
 	  return;
   }
 
@@ -2351,9 +2340,6 @@ DSRAgent::undeliverablePkt(Packet *pkt, int mine)
   if(srh->salvaged() >= dsr_salvage_max_attempts) {
 	  assert(mine);
 	  drop(pkt, DROP_RTR_SALVAGE);
-	  #ifdef SEMITCP
-	  send_down(true);
-	  #endif
 	  return;
   }
 #endif /* NEW_SALVAGE_LOGIC */
@@ -2426,9 +2412,6 @@ DSRAgent::undeliverablePkt(Packet *pkt, int mine)
 						cmh->uid(), p.src.dump(), p.dest.dump());
 				  if (mine) {
 					  drop(pkt, DROP_RTR_MAC_CALLBACK);
-				      #ifdef SEMITCP
-					  send_down(true);
-				      #endif
 				  }
 				  return;
 			  }
@@ -2477,9 +2460,6 @@ DSRAgent::undeliverablePkt(Packet *pkt, int mine)
 			srh->salvaged());
 	  if (mine) {
 		  drop(pkt, DROP_RTR_NO_ROUTE);
-		  #ifdef SEMITCP
-		  send_down(true);
-		  #endif
 	  }
   }
 }
@@ -2976,34 +2956,6 @@ DSRAgent::length_all()
     return length_buf;
 }
 
-/*When IFQ is empty,it will call DSRAgent to send packet which has
-  a route in the cache, if not,it will call SemiTCP to send down a packet
-  added by mhc,2010-4-30
-*/
-void
-DSRAgent::send_down (bool force)
-{
-     for (int c = 0; c < SEND_BUF_SIZE; c++)
-    {
-      if(send_buf[c].p.pkt == NULL) continue;
-      if (route_cache->findRoute(send_buf[c].p.dest, send_buf[c].p.route, 1))
-	  {
-	      if (verbose)
-		trace("Sdebug %.9f _%s_ liberated from sendbuf %s->%s %s",
-		  Scheduler::instance().clock(), net_id.dump(),
-		  send_buf[c].p.src.dump(), send_buf[c].p.dest.dump(), 
-		  send_buf[c].p.route.dump());
-	  sendOutPacketWithRoute(send_buf[c].p, true);
-	  //delay += arp_timeout;	
-	  send_buf[c].p.pkt = NULL;
-	  return;
-	  }
-    }
-	if(p_to_semitcp && length_all() == 0)
-	  p_to_semitcp->send_down(force);
-	else if(p_to_tcpsink && length_all() == 0)
-	  p_to_tcpsink->send_down();
-}
 #endif
 
 

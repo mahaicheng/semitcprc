@@ -1,4 +1,4 @@
-// -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
+﻿// -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
 
 /*
  * Copyright (C) 2004 by the University of Southern California
@@ -143,11 +143,11 @@ protected:
 	XCPTimer*        rtt_timer_;
 	double           link_capacity_bps_;
 
-	static const double	ALPHA_		= 0.4;
-	static const double	BETA_		= 0.226;
-	static const double	GAMMA_		= 0.1;
-	static const double	XCP_MAX_INTERVAL= 1.0;
-	static const double	XCP_MIN_INTERVAL= .001;
+	static constexpr double	ALPHA_		= 0.4;
+	static constexpr double	BETA_		= 0.226;
+	static constexpr double	GAMMA_		= 0.1;
+	static constexpr double	XCP_MAX_INTERVAL= 1.0;
+	static constexpr double	XCP_MIN_INTERVAL= .001;
 
 	double          Te_;       // control interval
 	double          Tq_;    
@@ -171,7 +171,7 @@ protected:
 	double			b_[BSIZE];
 	double			t_[BSIZE];
 	int			maxb_;
-	static const double	BWIDTH = 0.01;
+	static constexpr double	BWIDTH = 0.01;
 	int			min_queue_ci_;
 	int			max_queue_ci_;
   

@@ -865,7 +865,6 @@ Mac802_11::check_pktCTRL()
 	 */
 	case MAC_Subtype_CTS:
 	{
-	#ifdef SEMITCP
 		if(!is_idle()) { //Hinden terminal
 			discard(pktCTRL_, DROP_MAC_BUSY); pktCTRL_ = 0;
 			Packet::free(last_rts_frame);
@@ -940,26 +939,12 @@ Mac802_11::check_pktCTRL()
 			      - phymib_.getSIFS()
 			      - txtime(phymib_.getACKlen(), basicRate_);
 		}
-	#else
-		if(!is_idle()) {
-			discard(pktCTRL_, DROP_MAC_BUSY); pktCTRL_ = 0;
-			return 0;
+
+		if (last_rts_frame != nullptr)
+		{
+			Packet::free(last_rts_frame);
+			last_rts_frame = nullptr;
 		}
-		setTxState(MAC_CTS);
-		/*
-		 * timeout:  cts + data tx time calculated by
-		 *           adding cts tx time to the cts duration
-		 *           minus ack tx time -- this timeout is
-		 *           a guess since it is unspecified
-		 *           (note: mh->dh_duration == cf->cf_duration)
-		 */		
-		 timeout = txtime(phymib_.getCTSlen(), basicRate_)
-                        + DSSS_MaxPropagationDelay                      // XXX
-                        + sec(mh->dh_duration)
-                        + DSSS_MaxPropagationDelay                      // XXX
-                       - phymib_.getSIFS()
-                       - txtime(phymib_.getACKlen(), basicRate_);
-	#endif
 		break;
 	}
 		/*

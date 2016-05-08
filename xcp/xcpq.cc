@@ -1,4 +1,4 @@
-// -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
+﻿// -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
 
 /*
  * Copyright (C) 2004 by the University of Southern California
@@ -57,12 +57,12 @@ public:
 } class_droptail_xcpq;
 
 
-const double XCPQueue::BWIDTH;
-const double XCPQueue::ALPHA_;
-const double XCPQueue::BETA_;
-const double XCPQueue::GAMMA_;
-const double XCPQueue::XCP_MAX_INTERVAL;
-const double XCPQueue::XCP_MIN_INTERVAL;
+constexpr double XCPQueue::BWIDTH;
+constexpr double XCPQueue::ALPHA_;
+constexpr double XCPQueue::BETA_;
+constexpr double XCPQueue::GAMMA_;
+constexpr double XCPQueue::XCP_MAX_INTERVAL;
+constexpr double XCPQueue::XCP_MIN_INTERVAL;
 const int    XCPQueue::BSIZE;
 
 

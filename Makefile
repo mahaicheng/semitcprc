@@ -87,7 +87,7 @@ CFLAGS	+= $(CCOPT) $(DEFINE)
 
 .cc.o:
 	@rm -f $@
-	$(CPP) -c $(CFLAGS) $(INCLUDES) -o $@ $*.cc
+	$(CPP) -c -std=c++11 $(CFLAGS) $(INCLUDES) -o $@ $*.cc
 
 .c.o:
 	@rm -f $@

@@ -36,6 +36,8 @@
 #ifndef __mac_timers_h__
 #define __mac_timers_h__
 
+#include "common/scheduler.h"
+
 /* ======================================================================
    Timers
    ====================================================================== */
@@ -46,7 +48,7 @@ class NBTimer : public Handler
 {
 	protected:
 		int busy_;
-		Event intr;
+		Event intr; 	// the elememt of scheduler
 		Mac802_11	*mac;
 	public:
 		NBTimer(Mac802_11* m) : mac(m) {

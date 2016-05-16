@@ -85,9 +85,6 @@ void NBTimer::handle(Event*)
 }
 void NBTimer::start(double time)
 {
-    #ifdef MACDEBUG
-	printf("%0.9f index_:%d NBTimer::%s %.9f\n", Scheduler::instance().clock(), mac->index_, __FUNCTION__, time);
-    #endif
 	Scheduler &s = Scheduler::instance();
 	assert(busy_ == 0);
 	busy_ = 1;

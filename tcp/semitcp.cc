@@ -36,14 +36,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
-
-#define PARTIALACK ///Acknowledge a single packet
-
-//#define TCPDEBUG
-
 #include "ip.h"
 #include "tcp.h"
 #include "semitcp.h"
+#include<algorithm>
 #include <unistd.h>
 
 #ifdef SEMITCP
@@ -78,21 +74,9 @@ void SemiTcpAgent::backoffHandler()
 	}
 	else
 	{
-		int tmpseqno = -1;
-        rtxList.sort();
-        if ( !rtxList.empty() ) { 	//remove the acked packets
-                do {
-                        tmpseqno = *rtxList.begin();
-                        rtxList.remove ( tmpseqno );
-                } while ( tmpseqno <= last_ack_ && !rtxList.empty() );
-        }
-        if ( tmpseqno >= 0 && tmpseqno > highest_ack_ ) {
-                output ( tmpseqno, 0 ); 
-        } else { 	
-                output ( t_seqno_, 0 ); 	// send a new packet
-        }
+        output(t_seqno_, 0); 	// send a new packet
         
-        decr_cw(); 	// maybe decrease cw_ window is the better way?
+        decr_cw(); 	// FIXME: maybe decrease cw_ window is the better way?
 		backoffTimer_.resched((Random::random() % cw_) * timeslot);
 	}
 }
@@ -139,7 +123,7 @@ SemiTcpAgent::output ( int seqno, int reason )
         tcph->ts() = Scheduler::instance().clock();
         tcph->ts_echo() = ts_peer_;
         tcph->reason() = reason;
-        tcph->last_rtt() = int ( int ( t_rtt_ ) *tcp_tick_*1000 );
+        tcph->last_rtt() = int ( t_rtt_ *tcp_tick_*1000 );
 
         /* Check if this is the initial SYN packet. */
         if ( seqno == 0 ) {
@@ -159,21 +143,8 @@ SemiTcpAgent::output ( int seqno, int reason )
 
         ++ndatapack_;
         ndatabytes_ += databytes;
-
-
-#ifdef PARTIALACK
-        assert ( seqno <= t_seqno_ );
-        if ( seqno == t_seqno_ ) {
-                unacked.push_back ( seqno );
 		t_seqno_++;	//has sent a new packet
-        }
-        else{
-	    //if seqno < t_seqno_, it means the packet now we are going to send
-	    //is an old and retransmited packet, so the unacked list has already
-	    //recorded this packet. therefore, it's no need to record it again.
-	}
-#endif
-
+        
         if ( seqno > curseq_)
 	{
                 idle();  // Tell application I have sent everything so far
@@ -280,33 +251,15 @@ void SemiTcpAgent::recv ( Packet *pkt, Handler* )
                 return;
         }
         ++nackpack_;
-        if ( tcph->seqno() > highest_ack_ && tcph->reason() == 0 ) { 	//cumulative ack
-                if ( highest_ack_ + 1 > t_seqno_ ) {
+        if ( tcph->seqno() > highest_ack_ && tcph->reason() == 0 ) 
+		{ 	//cumulative ack
+                if (t_seqno_ < highest_ack_ + 1) {
                         t_seqno_ = highest_ack_ + 1;
                 }
                 highest_ack_ = tcph->seqno();
                 recv_newack_helper ( pkt ); 	
         }
         
-        //following codes process the situation when receive old ack
-#ifdef PARTIALACK
-        if ( tcph->reason() == 0 ) { //cumulative ack
-                //Update the unacked list to remove the acked packets
-                while ( !unacked.empty() && *unacked.begin() <= tcph->seqno() ) {
-                        int tmp = *unacked.begin();
-                        unacked.remove ( tmp );
-                }
-        } else { 	//reason == 0, it's a single ack
-                if ( find ( unacked.begin(), unacked.end(), tcph->seqno() ) != unacked.end() )
-                        unacked.remove ( tcph->seqno() );
-        }
-        if ( !unacked.empty() ) {
-                int tmp = *unacked.begin() - 1;
-                if ( tmp > ( int ) highest_ack_ ) {
-                        highest_ack_ = tmp;
-                }
-        }
-#endif
         Packet::free ( pkt );
 }
 
@@ -319,12 +272,10 @@ void SemiTcpAgent::timeout ( int tno )
 
         assert ( cwnd_ == -1 );
 
-        reset_rtx_timer ( 0 );
-        if ( find ( rtxList.begin(), rtxList.end(), highest_ack_ + 1 ) == rtxList.end() )
-                rtxList.push_back ( highest_ack_ + 1 );
+		output(t_seqno_, 0);
 		
 		inr_cw();
-		if (backoffTimer_.status() == TIMER_IDLE)
+		if (backoffTimer_.status() != TIMER_PENDING)
 		{
 			backoffTimer_.resched((Random::random() % cw_) * timeslot);
 		}

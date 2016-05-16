@@ -35,11 +35,10 @@
 #ifndef SEMITCP_H
 #define SEMITCP_H
 
-class SemiTcpAgent;
 class AODV;
 #define MAXHISTORY	200
 #include <stdio.h>
-#include <list>
+#include <set>
 #include <algorithm>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -56,8 +55,8 @@ class AODV;
 #define RECOVER_QUENCH  3
 
 #include"mac-802_11.h"
-//class Mac802_11;
 
+class SemiTcpAgent; 	//forward declaration
 class TcpBackoffTimer : public TimerHandler
 {
 public:
@@ -71,6 +70,11 @@ class SemiTcpAgent : public TcpAgent
 {
 public:
         SemiTcpAgent();
+		//noncopyable
+		SemiTcpAgent(const SemiTcpAgent &) = delete;
+		SemiTcpAgent& operator=(const SemiTcpAgent &) = delete;
+		virtual ~SemiTcpAgent() = default;
+		
 		void backoffHandler();
         int command ( int argc, const char*const* argv );
 
@@ -99,11 +103,8 @@ private:
         virtual void set_rtx_timer();
 		
 		void newack ( Packet* pkt );
-        void reset_rtx_timer ( int backoff );
 
         Mac802_11* p_to_mac;
-        list<int> rtxList; //packets needed to be retransmitted
-        list<int> unacked; //Packets have sent but unacked
         TcpBackoffTimer backoffTimer_;
 		int cw_; 
 		double timeslot;

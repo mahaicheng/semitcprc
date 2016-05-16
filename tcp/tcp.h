@@ -195,7 +195,7 @@ protected:
 	virtual void delay_bind_init_all();
 	virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);
 
-	TracedInt t_seqno_;	/* sequence number */
+	TracedInt t_seqno_;	/* the lowest sequence number that would send this time*/
 	/*
 	 * State encompassing the round-trip-time estimate.
 	 * srtt and rttvar are stored as fixed point;

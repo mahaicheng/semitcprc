@@ -39,21 +39,13 @@
 #include <math.h>
 #include "agent.h"
 #include "tcp.h"
-#ifdef SEMITCP
-#include <mac/mac-802_11.h>
-class Mac802_11;
-#include <queue>
-using namespace std;
-#endif
-
-#define MAXACKQ_LEN 500 ///the size of transport layer queue
 
 /* max window size */
 // #define MWS 1024  
 #define MWS 64
-#define MWM (MWS-1)     // MWM == <<00111111>> 8 bytes
+#define MWM (MWS-1)
 #define HS_MWS 65536
-#define HS_MWM (MWS-1)  // HS_MWM == <<01111111 11111111>> 16 bytes 
+#define HS_MWM (MWS-1)
 /* For Tahoe TCP, the "window" parameter, representing the receiver's
  * advertised window, should be less than MWM.  For Reno TCP, the
  * "window" parameter should be less than MWM/2.
@@ -81,7 +73,7 @@ protected:
 	int wndmask_;		/* window mask - either MWM or HS_MWM - Sylvia */ 
 	int ecn_unacked_;	/* ECN forwarded to sender, but not yet
 				 * acknowledged. */
-	int *seen_;		/* array of packets seen (what is the "seen" means? )*/
+	int *seen_;		/* array of packets seen */
 	double ts_to_echo_;	/* timestamp to echo to peer */
 	int is_dup_;		// A duplicate packet.
 public:
@@ -93,8 +85,8 @@ class SackStack;
 class Sacker : public Acker, public TclObject {
 public: 
 	Sacker() : base_nblocks_(-1), sf_(0) { };
-	virtual ~Sacker();
-	virtual void append_ack(hdr_cmn*, hdr_tcp*, int oldSeqno) const;
+	~Sacker();
+	void append_ack(hdr_cmn*, hdr_tcp*, int oldSeqno) const;
 	void reset();
 	void configure(TcpSink*);
 protected:
@@ -103,49 +95,20 @@ protected:
 	SackStack *sf_;
 	void trace(TracedVar*);
 };
-#ifdef SEMITCP
-class ack_pkt    
-{
-private:
-	Packet *ack_;
-	double time_;
-	
-public:
-	ack_pkt(Packet* p) 
-	{
-		if (p == NULL)
-			return;
-		
-		time_ = Scheduler::instance().clock();
-		ack_ = p;
-	}
-	
-	Packet* ack() const 
-	{
-		return ack_;
-	}
-	
-	double time() const 
-	{
-		return time_;
-	}
-};
-#endif
 
 class TcpSink : public Agent {
 public:
-	TcpSink(Acker*);    //策略模式
+	TcpSink(Acker*);
 	void recv(Packet* pkt, Handler*);
 	void reset();
 	int command(int argc, const char*const* argv);
 	TracedInt& maxsackblocks() { return max_sack_blocks_; }
-
 protected:
 	void ack(Packet*);
 	virtual void add_to_ack(Packet* pkt);
 
-    virtual void delay_bind_init_all();
-    virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);
+        virtual void delay_bind_init_all();
+        virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);
 
 	Acker* acker_;
 	int ts_echo_bugfix_;
@@ -163,9 +126,6 @@ protected:
 					// for RFC2581-compliant gap-filling.
 	double lastreset_; 	/* W.N. used for detecting packets  */
 				/* from previous incarnations */
-	int no_dupack; ///SEMIDEBUG
-	Mac802_11* p_to_mac;
-	queue<ack_pkt> ack_q;
 };
 
 class DelAckSink;
@@ -181,9 +141,9 @@ protected:
 class DelAckSink : public TcpSink {
 public:
 	DelAckSink(Acker* acker);
-	virtual void recv(Packet* pkt, Handler*);
+	void recv(Packet* pkt, Handler*);
 	virtual void timeout(int tno);
-	virtual void reset();
+	void reset();
 protected:
 	double interval_;
 	DelayTimer delay_timer_;

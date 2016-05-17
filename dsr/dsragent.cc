@@ -342,10 +342,6 @@ public:
   DSRAgent methods
 ---------------------------------------------------------------------------*/
 DSRAgent::DSRAgent(): Agent(PT_DSR), request_table(128), route_cache(NULL),
-#ifdef SEMITCP
-p_to_semitcp(NULL),// p_to_mac(0),
-p_to_tcpsink(NULL),
-#endif
 send_buf_timer(this), flow_table(), ars_table()
 {
   int c;
@@ -546,25 +542,6 @@ DSRAgent::command(int argc, const char*const* argv)
 	  port_dmux_ = (NsObject *) obj;
 	  return TCL_OK;
 	}
-#ifdef SEMITCP
-			else if ( strcmp ( argv[1], "aodv-get-semitcp" ) == 0 ) {
-				p_to_semitcp = ( SemiTcpAgent* ) TclObject::lookup ( argv[2] );
-				if ( p_to_semitcp == 0 ) {
-					return TCL_ERROR;
-				} else {
-					return TCL_OK;
-				}
-			}
-			else if ( strcmp ( argv[1], "aodv-get-tcpsink" ) == 0 ) {
-				p_to_tcpsink = ( TcpSink* ) TclObject::lookup ( argv[2] );
-				if ( p_to_tcpsink == 0 ) {
-					return TCL_ERROR;
-					assert(0);
-				} else {
-					return TCL_OK;
-				}
-			}
-#endif	
     }
   else if (argc == 4)
     {

@@ -138,11 +138,6 @@ public:
   const int length_all();
 #endif
 private:
-#ifdef SEMITCP
-  SemiTcpAgent* p_to_semitcp;	//added by mhc 2010-4-30
-  TcpSink *p_to_tcpsink;
-#endif
-
   Trace *logtarget;
   int off_mac_;
   int off_ll_;

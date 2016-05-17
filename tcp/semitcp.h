@@ -35,10 +35,10 @@
 #ifndef SEMITCP_H
 #define SEMITCP_H
 
-class AODV;
+#include"mac-802_11.h"
 #define MAXHISTORY	200
 #include <stdio.h>
-#include <set>
+#include <unordered_set>
 #include <algorithm>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -54,8 +54,6 @@ class AODV;
 #define RECOVER_TIMEOUT 2
 #define RECOVER_QUENCH  3
 
-#include"mac-802_11.h"
-
 class SemiTcpAgent; 	//forward declaration
 class TcpBackoffTimer : public TimerHandler
 {
@@ -68,45 +66,47 @@ private:
 
 class SemiTcpAgent : public TcpAgent
 {
+	friend class TcpBackoffTimer;
 public:
         SemiTcpAgent();
-		//noncopyable
-		SemiTcpAgent(const SemiTcpAgent &) = delete;
-		SemiTcpAgent& operator=(const SemiTcpAgent &) = delete;
-		virtual ~SemiTcpAgent() = default;
-		
-		void backoffHandler();
+        virtual void recv (Packet *pkt, Handler*);
+        virtual void timeout (int tno);
         int command ( int argc, const char*const* argv );
-
 private:
-		void inr_cw()
-		{
+		void backoffHandler();
+		void inr_cw(){
 			if (cw_ < 64)
 				cw_ << 1;
 		}
-		void decr_cw()
-		{
+		void decr_cw(){
 			if (cw_ > 1)
 				cw_ >> 1;
 		}
-		void reset_cw()
+		void reset_cw(){ cw_ = 1; }
+		void setBackoffTimer()
 		{
-			cw_ = 1;
+			if (backoffTimer_.status() != TIMER_PENDING)
+			{
+				backoffTimer_.resched((Random::random() % cw_) * timeslot);
+			}
 		}
-		
-        virtual void recv ( Packet *pkt, Handler* );
-        virtual void reset();
-        virtual void timeout ( int tno );
+		void resetBackoffTimer()
+		{
+			backoffTimer_.force_cancel();
+			backoffTimer_.resched((Random::random() % cw_) * timeslot);
+		}
         virtual void output ( int seqno, int reason = 0 );
         virtual void recv_newack_helper ( Packet *pkt );
         virtual void send_much ( int force, int reason, int maxburst );
         virtual void set_rtx_timer();
-		
+		void reset_rtx_timer(int);
 		void newack ( Packet* pkt );
 
         Mac802_11* p_to_mac;
         TcpBackoffTimer backoffTimer_;
+		unordered_set<int> outgoingPkts;
 		int cw_; 
 		double timeslot;
+		bool isFirstPacket_;
 };
 #endif

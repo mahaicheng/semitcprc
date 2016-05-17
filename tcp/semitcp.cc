@@ -35,11 +35,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <sys/types.h>
 #include "ip.h"
 #include "tcp.h"
 #include "semitcp.h"
-#include<algorithm>
+#include <algorithm>
 #include <unistd.h>
 
 #ifdef SEMITCP
@@ -62,7 +63,8 @@ SemiTcpAgent::SemiTcpAgent()
 	: backoffTimer_(this), 
 	p_to_mac(NULL), 
 	cw_(1),
-	timeslot(0.00002) // TODO: need to define the proper timeslot?
+	timeslot(0.00002), // TODO: need to define the proper timeslot?
+	isFirstPacket_(true)
 { }
 
 void SemiTcpAgent::backoffHandler()
@@ -74,8 +76,8 @@ void SemiTcpAgent::backoffHandler()
 	}
 	else
 	{
-        output(t_seqno_, 0); 	// send a new packet
-        
+        output(t_seqno_); 	// send a new packet
+        t_seqno_++;
         decr_cw(); 	// FIXME: maybe decrease cw_ window is the better way?
 		backoffTimer_.resched((Random::random() % cw_) * timeslot);
 	}
@@ -115,7 +117,7 @@ SemiTcpAgent::output ( int seqno, int reason )
 
         ///record the number of unacked packets
         struct hdr_cmn* ch = HDR_CMN ( p );
-        ch->num_acked() = ( int ) t_seqno_ -1 - unacked.size();
+        ch->num_acked() = highest_ack_;
 
         hdr_tcp *tcph = hdr_tcp::access ( p );
         int databytes = hdr_cmn::access ( p )->size();
@@ -143,13 +145,12 @@ SemiTcpAgent::output ( int seqno, int reason )
 
         ++ndatapack_;
         ndatabytes_ += databytes;
-		t_seqno_++;	//has sent a new packet
         
         if ( seqno > curseq_)
-	{
-                idle();  // Tell application I have sent everything so far
-		return;	 // no packet to send
-	}
+		{
+            idle();  // Tell application I have sent everything so far
+			return;
+		}
         if ( seqno > maxseq_ ) {
                 maxseq_ = seqno;
                 if ( !rtt_active_ ) {
@@ -163,11 +164,11 @@ SemiTcpAgent::output ( int seqno, int reason )
                 ++nrexmitpack_;
                 nrexmitbytes_ += databytes;
         }
-        if ( ! ( rtx_timer_.status() == TIMER_PENDING ) )
+        if (!(rtx_timer_.status() == TIMER_PENDING))
                 /* No timer pending.  Schedule one. */
                 set_rtx_timer();
 	
-	send ( p, 0 );   //really send the packet of p.
+	send(p, 0);   //really send the packet of p.
 }
 
 void SemiTcpAgent::recv_newack_helper ( Packet *pkt )
@@ -251,15 +252,25 @@ void SemiTcpAgent::recv ( Packet *pkt, Handler* )
                 return;
         }
         ++nackpack_;
-        if ( tcph->seqno() > highest_ack_ && tcph->reason() == 0 ) 
-		{ 	//cumulative ack
+        if ( tcph->seqno() > highest_ack_) 
+		{ 	//new ack
                 if (t_seqno_ < highest_ack_ + 1) {
                         t_seqno_ = highest_ack_ + 1;
                 }
                 highest_ack_ = tcph->seqno();
-                recv_newack_helper ( pkt ); 	
+                recv_newack_helper ( pkt ); 
+				decr_cw();
+				setBackoffTimer();
         }
-        
+        else if (tcph->seqno() == highest_ack_)	// duplicate ack
+		{
+			t_seqno_ = highest_ack_ + 1;
+			output(t_seqno_);
+			t_seqno_++;
+			inr_cw();
+			resetBackoffTimer();
+		}
+		        
         Packet::free ( pkt );
 }
 
@@ -267,18 +278,15 @@ void SemiTcpAgent::recv ( Packet *pkt, Handler* )
 void SemiTcpAgent::timeout ( int tno )
 {
         assert ( tno == TCP_TIMER_RTX );
-
         trace_event ( "TIMEOUT" );
 
         assert ( cwnd_ == -1 );
-
-		output(t_seqno_, 0);
 		
+		t_seqno_ = highest_ack_ + 1;
+		output(t_seqno_, 0);
+		t_seqno_++;
 		inr_cw();
-		if (backoffTimer_.status() != TIMER_PENDING)
-		{
-			backoffTimer_.resched((Random::random() % cw_) * timeslot);
-		}
+		resetBackoffTimer();
 }
 
 /*
@@ -287,6 +295,16 @@ void SemiTcpAgent::timeout ( int tno )
  */
 void SemiTcpAgent::send_much ( int force, int reason, int maxburst )
 {
+	if (isFirstPacket_)
+	{
+		isFirstPacket_ = false;
+		output(t_seqno_);
+		t_seqno_++;
+		
+		assert(backoffTimer_.status() == TIMER_IDLE);
+		backoffTimer_.sched((Random::random() % cw_) * timeslot);
+	}
+		output();
         if (!p_to_mac->congested()) 
 		{
 			decr_cw();
@@ -295,8 +313,7 @@ void SemiTcpAgent::send_much ( int force, int reason, int maxburst )
 		{
 			inr_cw();
 		}
-		
-		backoffTimer_.resched((Random::random() % cw_) * timeslot);
+		setBackoffTimer();
 }
 
 void SemiTcpAgent::reset_rtx_timer ( int backoff )

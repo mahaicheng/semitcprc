@@ -130,27 +130,7 @@ AODV::command(int argc, const char*const* argv) {
 		return TCL_ERROR;
 	}
 	return TCL_OK;
-    }
-#ifdef SEMITCP
-			else if ( strcmp ( argv[1], "aodv-get-semitcp" ) == 0 ) {
-				p_to_semitcp = ( SemiTcpAgent* ) TclObject::lookup ( argv[2] );
-				if ( p_to_semitcp == 0 ) {
-					return TCL_ERROR;
-				} else {
-					return TCL_OK;
-				}
-			}
-			else if ( strcmp ( argv[1], "aodv-get-tcpsink" ) == 0 ) {
-				p_to_tcpsink = ( TcpSink* ) TclObject::lookup ( argv[2] );
-				if ( p_to_tcpsink == 0 ) {
-					return TCL_ERROR;
-					assert(0);
-				} else {
-					return TCL_OK;
-				}
-			}
-#endif
-    
+    } 
   }
   return Agent::command(argc, argv);
 }
@@ -161,13 +141,7 @@ AODV::command(int argc, const char*const* argv) {
 
 AODV::AODV(nsaddr_t id) : Agent(PT_AODV),
 			  btimer(this), htimer(this), ntimer(this), 
-			  #ifdef SEMITCP
-			  p_to_semitcp(NULL),
-			  p_to_tcpsink(NULL),
-			  #endif
-			  rtimer(this), lrtimer(this), rqueue(id) {
- 
-                
+			  rtimer(this), lrtimer(this), rqueue(id) {          
   index = id;
   seqno = 2;
   bid = 1;

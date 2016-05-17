@@ -339,10 +339,6 @@ class AODV: public Agent {
 
 	/* for passing packets up to agents */
 	PortClassifier *dmux_;
-#ifdef SEMITCP
-        SemiTcpAgent* p_to_semitcp;
-	TcpSink *p_to_tcpsink;
-#endif
 
 };
 

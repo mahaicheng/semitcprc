@@ -1990,7 +1990,7 @@ Mac802_11::recvACK(Packet *p)
 
 bool Mac802_11::congested()
 {
-	double totalLocal = p_to_prique->avg_length();
+	double totalLocal = p_to_prique->length();
 	return totalLocal > p_to_prique->congestionThreshold();
 }
 

@@ -96,6 +96,7 @@ protected:
 						   transmission range and 550m interference/cs ranges) */
 	int ispaced_;
 	int initial_pace_;
+	
 	int samplecount_;
 	int history_;				/* n_hop_delay_ samples history size */
 	int pkts_to_send_;			/* Number of packets waiting to be transmitted */

@@ -38,7 +38,7 @@
 #include"mac-802_11.h"
 #define MAXHISTORY	200
 #include <stdio.h>
-#include <unordered_set>
+#include <set>
 #include <algorithm>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -58,55 +58,37 @@ class SemiTcpAgent; 	//forward declaration
 class TcpBackoffTimer : public TimerHandler
 {
 public:
-	TcpBackoffTimer(SemiTcpAgent *a) : a_(a) { }
+	TcpBackoffTimer(SemiTcpAgent *a) : a_(a){ }
 private:
 	virtual void expire(Event *e);
 	SemiTcpAgent *a_;
 };
 
-class SemiTcpAgent : public TcpAgent
+class SemiTcpAgent : public NewRenoTcpAgent
 {
 	friend class TcpBackoffTimer;
 public:
         SemiTcpAgent();
-        virtual void recv (Packet *pkt, Handler*);
-        virtual void timeout (int tno);
-        int command ( int argc, const char*const* argv );
+        virtual void recv(Packet *pkt, Handler*);
+        virtual void timeout(int tno);
+        virtual void output(int seqno, int reason = 0);
+        int command (int argc, const char*const* argv);
 private:
-		void backoffHandler();
-		void inr_cw(){
-			if (cw_ < 64)
-				cw_ << 1;
-		}
-		void decr_cw(){
-			if (cw_ > 1)
-				cw_ >> 1;
-		}
-		void reset_cw(){ cw_ = 1; }
+		void backoff_timeout();
 		void setBackoffTimer()
 		{
-			if (backoffTimer_.status() != TIMER_PENDING)
-			{
-				backoffTimer_.resched((Random::random() % cw_) * timeslot);
-			}
+			backoffTimer_.resched((Random::random()%cw_ + 1)*timeslot_);
 		}
-		void resetBackoffTimer()
-		{
-			backoffTimer_.force_cancel();
-			backoffTimer_.resched((Random::random() % cw_) * timeslot);
-		}
-        virtual void output ( int seqno, int reason = 0 );
-        virtual void recv_newack_helper ( Packet *pkt );
-        virtual void send_much ( int force, int reason, int maxburst );
-        virtual void set_rtx_timer();
-		void reset_rtx_timer(int);
-		void newack ( Packet* pkt );
+		void incr_cw(){cw_ <<= 1; if(cw_ > 64) cw_ = 64;}
+		void decr_cw(){cw_ >>= 1; if(cw_ < 1) cw_ = 1;}
+		void reset_cw(){cw_ = 1;}
 
         Mac802_11* p_to_mac;
         TcpBackoffTimer backoffTimer_;
-		unordered_set<int> outgoingPkts;
-		int cw_; 
-		double timeslot;
-		bool isFirstPacket_;
+		set<int> outgoingPkts;
+		bool isBackoff_;
+		bool initial_backoff_;
+		int cw_;
+		double timeslot_;
 };
 #endif

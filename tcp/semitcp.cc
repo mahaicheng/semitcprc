@@ -43,11 +43,11 @@
 #include <algorithm>
 #include <unistd.h>
 
-#ifdef SEMITCP
+using namespace std;
 
 void TcpBackoffTimer::expire(Event *)
 {
-	a_->backoffHandler();
+	a_->backoff_timeout();
 }
 
 static class SemiTcpClass : public TclClass
@@ -59,28 +59,36 @@ public:
         }
 } class_semi;
 
-SemiTcpAgent::SemiTcpAgent() 
-	: backoffTimer_(this), 
-	p_to_mac(NULL), 
-	cw_(1),
-	timeslot(0.00002), // TODO: need to define the proper timeslot?
-	isFirstPacket_(true)
-{ }
+SemiTcpAgent::SemiTcpAgent() : 
+			backoffTimer_(this),	
+			p_to_mac(nullptr),
+			isBackoff_(true),
+			initial_backoff_(false),
+			cw_(1),
+			timeslot_(0.001)
+{ 
+	
+}
 
-void SemiTcpAgent::backoffHandler()
+void SemiTcpAgent::backoff_timeout()
 {
-	if(p_to_mac->congested())
+	assert(isBackoff_ == true);
+	if (!outgoingPkts.empty())
 	{
-		inr_cw(); 	// backoff if congested
-		backoffTimer_.resched((Random::random() % cw_) * timeslot);
+			if (p_to_mac->congested())
+			{
+				incr_cw();
+			}
+			else
+			{
+				decr_cw();
+				int tmpseqno = *outgoingPkts.begin();
+				NewRenoTcpAgent::output(tmpseqno, 0);
+				outgoingPkts.erase(outgoingPkts.begin());
+			}
 	}
-	else
-	{
-        output(t_seqno_); 	// send a new packet
-        t_seqno_++;
-        decr_cw(); 	// FIXME: maybe decrease cw_ window is the better way?
-		backoffTimer_.resched((Random::random() % cw_) * timeslot);
-	}
+	
+	setBackoffTimer();
 }
 
 int SemiTcpAgent::command ( int argc, const char*const* argv )
@@ -98,235 +106,108 @@ int SemiTcpAgent::command ( int argc, const char*const* argv )
         return TcpAgent::command ( argc, argv );
 }
 
-void SemiTcpAgent::reset ()
+void SemiTcpAgent::output ( int seqno, int reason )
 {
-        TcpAgent::reset ();
-
-        //since we don't use congestion window in SemiTcp, we set the variable as negative.
-        cwnd_ = -1;
-        ssthresh_ = -1;
-        wnd_restart_ = -1.;
-        awnd_ = -1;
-}
-
-void
-SemiTcpAgent::output ( int seqno, int reason )
-{
-        int force_set_rtx_timer = 0;
-        Packet* p = allocpkt();
-
-        ///record the number of unacked packets
-        struct hdr_cmn* ch = HDR_CMN ( p );
-        ch->num_acked() = highest_ack_;
-
-        hdr_tcp *tcph = hdr_tcp::access ( p );
-        int databytes = hdr_cmn::access ( p )->size();
-        tcph->seqno() = seqno;
-        tcph->ts() = Scheduler::instance().clock();
-        tcph->ts_echo() = ts_peer_;
-        tcph->reason() = reason;
-        tcph->last_rtt() = int ( t_rtt_ *tcp_tick_*1000 );
-
-        /* Check if this is the initial SYN packet. */
-        if ( seqno == 0 ) {
-                if ( syn_ ) {
-                        databytes = 0;
-                        curseq_ += 1;
-                        hdr_cmn::access ( p )->size() = tcpip_base_hdr_size_;
-                }
-        } else if ( useHeaders_ == true ) {
-                hdr_cmn::access ( p )->size() += headersize();
-        }
-        hdr_cmn::access ( p )->size();
-
-        /* if no outstanding data, be sure to set rtx timer again */
-        if ( highest_ack_ == maxseq_ )
-                force_set_rtx_timer = 1;
-
-        ++ndatapack_;
-        ndatabytes_ += databytes;
-        
-        if ( seqno > curseq_)
+	if (!isBackoff_)
+	{
+		NewRenoTcpAgent::output(seqno, reason);
+		return;
+	}
+	if (reason == TCP_REASON_DUPACK)
+	{
+		backoffTimer_.force_cancel();
+		if (!outgoingPkts.empty())
 		{
-            idle();  // Tell application I have sent everything so far
-			return;
+			outgoingPkts.clear();
+			isBackoff_ = false;
 		}
-        if ( seqno > maxseq_ ) {
-                maxseq_ = seqno;
-                if ( !rtt_active_ ) {
-                        rtt_active_ = 1;
-                        if ( seqno > rtt_seq_ ) {
-                                rtt_seq_ = seqno;
-                                rtt_ts_ = Scheduler::instance().clock();
-                        }
-                }
-        } else {
-                ++nrexmitpack_;
-                nrexmitbytes_ += databytes;
-        }
-        if (!(rtx_timer_.status() == TIMER_PENDING))
-                /* No timer pending.  Schedule one. */
-                set_rtx_timer();
+		NewRenoTcpAgent::output(seqno, reason);
+		return;
+	}
+	else
+	{
+		outgoingPkts.insert(seqno);
+	}
+	if (!initial_backoff_)
+	{
+		backoff_timeout();
+		initial_backoff_ = true;
+	}
 	
-	send(p, 0);   //really send the packet of p.
 }
 
-void SemiTcpAgent::recv_newack_helper ( Packet *pkt )
+void SemiTcpAgent::recv ( Packet *pkt, Handler* hand)
 {
-        newack ( pkt );
-
-        /* if the connection is done, call finish() */
-        if ( ( highest_ack_ >= curseq_-1 ) && !closed_ ) {
-                closed_ = 1;
-                finish();
-        }
-        if ( curseq_ == highest_ack_ +1 ) {
-                cancel_rtx_timer();
-        }
-}
-/*
- * Process a packet that acks previously unacknowleged data.
- */
-void SemiTcpAgent::newack ( Packet* pkt )
-{
-        double now = Scheduler::instance().clock();
-        hdr_tcp *tcph = hdr_tcp::access ( pkt );
-
-        if ( timerfix_ )
-                newtimer ( pkt );
-        dupacks_ = 0;
-        last_ack_ = tcph->seqno();
-        prev_highest_ack_ = highest_ack_ ;
-        highest_ack_ = last_ack_;
-
-        if ( t_seqno_ < last_ack_ + 1 )
-                t_seqno_ = last_ack_ + 1;
-        /*
-        * Update RTT only if it's OK to do so from info in the flags header.
-        * This is needed for protocols in which intermediate agents
-        * in the network intersperse acks (e.g., ack-reconstructors) for
-        * various reasons (without violating e2e semantics).
-        */
-        hdr_flags *fh = hdr_flags::access ( pkt );
-        if ( !fh->no_ts_ ) {
-                if ( ts_option_ ) {
-                        ts_echo_=tcph->ts_echo();
-                        rtt_update ( now - tcph->ts_echo() );
-                        if ( ts_resetRTO_ && ( !ect_ || !ecn_backoff_ ||
-                                               !hdr_flags::access ( pkt )->ecnecho() ) ) {
-                                // From Andrei Gurtov
-                                /*
-                                * Don't end backoff if still in ECN-Echo with
-                                * a congestion window of 1 packet.
-                                */
-                                t_backoff_ = 1;
-                                ecn_backoff_ = 0;
-                        }
-                }
-                if ( rtt_active_ && tcph->seqno() >= rtt_seq_ ) {
-                        if ( !ect_ || !ecn_backoff_ ||
-                             !hdr_flags::access ( pkt )->ecnecho() ) {
-                                /*
-                                * Don't end backoff if still in ECN-Echo with
-                                * a congestion window of 1 packet.
-                                */
-                                t_backoff_ = 1;
-                                ecn_backoff_ = 0;
-                        }
-                        rtt_active_ = 0;
-                        if ( !ts_option_ )
-                                rtt_update ( now - rtt_ts_ );
-                }
-        }
-        assert ( cwnd_ == -1 );
-}
-
-void SemiTcpAgent::recv ( Packet *pkt, Handler* )
-{
-        hdr_tcp *tcph = hdr_tcp::access ( pkt );
-
-        /* W.N.: check if this is from a previous incarnation */
-        if ( tcph->ts() < lastreset_ ) { //TIME_WAIT states can avoid this condition
-                // Remove packet and do nothing
-                Packet::free ( pkt );
-                return;
-        }
-        ++nackpack_;
-        if ( tcph->seqno() > highest_ack_) 
-		{ 	//new ack
-                if (t_seqno_ < highest_ack_ + 1) {
-                        t_seqno_ = highest_ack_ + 1;
-                }
-                highest_ack_ = tcph->seqno();
-                recv_newack_helper ( pkt ); 
-				decr_cw();
-				setBackoffTimer();
-        }
-        else if (tcph->seqno() == highest_ack_)	// duplicate ack
-		{
-			t_seqno_ = highest_ack_ + 1;
-			output(t_seqno_);
-			t_seqno_++;
-			inr_cw();
-			resetBackoffTimer();
-		}
-		        
-        Packet::free ( pkt );
+	if (!isBackoff_)
+	{
+		isBackoff_ = true;
+		initial_backoff_ = false;
+	}
+	NewRenoTcpAgent::recv(pkt, hand);
 }
 
 ///Called when the retransimition timer times out
 void SemiTcpAgent::timeout ( int tno )
 {
-        assert ( tno == TCP_TIMER_RTX );
-        trace_event ( "TIMEOUT" );
+	/* retransmit timer */
+	if (tno == TCP_TIMER_RTX) {
+		backoffTimer_.force_cancel();
+		isBackoff_ = false;
+		outgoingPkts.clear();
 
-        assert ( cwnd_ == -1 );
-		
-		t_seqno_ = highest_ack_ + 1;
-		output(t_seqno_, 0);
-		t_seqno_++;
-		inr_cw();
-		resetBackoffTimer();
-}
+		// There has been a timeout - will trace this event
+		trace_event("TIMEOUT");
 
-/*
- * NOTE: send_much() is called by sendmsg which is call by application layer protocol,
- * when the app layer has data to send at first.
- */
-void SemiTcpAgent::send_much ( int force, int reason, int maxburst )
-{
-	if (isFirstPacket_)
-	{
-		isFirstPacket_ = false;
-		output(t_seqno_);
-		t_seqno_++;
-		
-		assert(backoffTimer_.status() == TIMER_IDLE);
-		backoffTimer_.sched((Random::random() % cw_) * timeslot);
-	}
-		output();
-        if (!p_to_mac->congested()) 
-		{
-			decr_cw();
-        }
-        else
-		{
-			inr_cw();
+	        if (cwnd_ < 1) cwnd_ = 1;
+		if (highest_ack_ == maxseq_ && !slow_start_restart_) {
+			/*
+			 * TCP option:
+			 * If no outstanding data, then don't do anything.  
+			 */
+			 // Should this return be here?
+			 // What if CWND_ACTION_ECN and cwnd < 1?
+			 // return;
+		} else {
+			recover_ = maxseq_;
+			if (highest_ack_ == -1 && wnd_init_option_ == 2)
+				/* 
+				 * First packet dropped, so don't use larger
+				 * initial windows. 
+				 */
+				wnd_init_option_ = 1;
+			if (highest_ack_ == maxseq_ && restart_bugfix_)
+			       /* 
+				* if there is no outstanding data, don't cut 
+				* down ssthresh_.
+				*/
+				slowdown(CLOSE_CWND_ONE);
+			else if (highest_ack_ < recover_ &&
+			  last_cwnd_action_ == CWND_ACTION_ECN) {
+			       /*
+				* if we are in recovery from a recent ECN,
+				* don't cut down ssthresh_.
+				*/
+				slowdown(CLOSE_CWND_ONE);
+			}
+			else {
+				++nrexmit_;
+				last_cwnd_action_ = CWND_ACTION_TIMEOUT;
+				slowdown(CLOSE_SSTHRESH_HALF|CLOSE_CWND_RESTART);
+			}
 		}
-		setBackoffTimer();
+		/* Since:
+		   (1) we react upon incipient congestion by throttling the transmission 
+		       rate of TCP-AP
+		   (2) we rarely get any buffer overflow in multihop networks with consistent
+		       link layer bandwidth
+		   then we don't need to back off (verified by simulations). 
+		 */
+		reset_rtx_timer(0,0);
+		
+		last_cwnd_action_ = CWND_ACTION_TIMEOUT;
+		send_much(0, TCP_REASON_TIMEOUT, maxburst_);
+	} 
+	else {
+		timeout_nonrtx(tno);
+	}
 }
-
-void SemiTcpAgent::reset_rtx_timer ( int backoff )
-{
-        if ( backoff )
-                rtt_backoff();
-        set_rtx_timer();
-        rtt_active_ = 0;
-}
-
-void SemiTcpAgent::set_rtx_timer()
-{
-        double rto = rtt_timeout();
-        rtx_timer_.resched ( rto );
-}
-#endif

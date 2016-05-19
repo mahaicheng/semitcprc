@@ -64,7 +64,7 @@ private:
 	SemiTcpAgent *a_;
 };
 
-class SemiTcpAgent : public NewRenoTcpAgent
+class SemiTcpAgent : public TcpAgent
 {
 	friend class TcpBackoffTimer;
 public:
@@ -72,7 +72,7 @@ public:
         virtual void recv(Packet *pkt, Handler*);
         virtual void timeout(int tno);
         virtual void output(int seqno, int reason = 0);
-        int command (int argc, const char*const* argv);
+        int command(int argc, const char*const* argv);
 private:
 		void backoff_timeout();
 		void setBackoffTimer()
@@ -86,6 +86,10 @@ private:
         Mac802_11* p_to_mac;
         TcpBackoffTimer backoffTimer_;
 		set<int> outgoingPkts;
+		int emptyCount;
+		int notEmptyCount;
+		int congestedCount;
+		int notCongestedCount;
 		bool isBackoff_;
 		bool initial_backoff_;
 		int cw_;

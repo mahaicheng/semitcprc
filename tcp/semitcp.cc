@@ -62,6 +62,10 @@ public:
 SemiTcpAgent::SemiTcpAgent() : 
 			backoffTimer_(this),	
 			p_to_mac(nullptr),
+			emptyCount(0),
+			notEmptyCount(0),
+			congestedCount(0),
+			notCongestedCount(0),
 			isBackoff_(true),
 			initial_backoff_(false),
 			cw_(1),
@@ -75,17 +79,24 @@ void SemiTcpAgent::backoff_timeout()
 	assert(isBackoff_ == true);
 	if (!outgoingPkts.empty())
 	{
-			if (p_to_mac->congested())
-			{
-				incr_cw();
-			}
-			else
-			{
-				decr_cw();
-				int tmpseqno = *outgoingPkts.begin();
-				NewRenoTcpAgent::output(tmpseqno, 0);
-				outgoingPkts.erase(outgoingPkts.begin());
-			}
+		notEmptyCount++;
+		if (p_to_mac->congested())
+		{
+			congestedCount++;
+			incr_cw();
+		}
+		else
+		{
+			notCongestedCount++;
+			decr_cw();
+			int tmpseqno = *outgoingPkts.begin();
+			TcpAgent::output(tmpseqno, 0);
+			outgoingPkts.erase(outgoingPkts.begin());
+		}
+	}
+	else
+	{
+		emptyCount++;
 	}
 	
 	setBackoffTimer();
@@ -103,6 +114,14 @@ int SemiTcpAgent::command ( int argc, const char*const* argv )
                 printf ( "highest acked seqno: %d \n", ( int ) highest_ack_ );
                 return TCL_OK;
         }
+        else if (argc == 2 && strcmp(argv[1], "emptyCount") == 0)
+		{
+			fprintf(stderr, "\nemptyCount:\t\t%d\n\n", emptyCount);
+			fprintf(stderr, "notEmptyCount:\t\t%d\n", notEmptyCount);
+			fprintf(stderr, "\tcongestedCount:\t\t%d\n", congestedCount);
+			fprintf(stderr, "\tnotCongestedCount:\t%d\n\n", notCongestedCount);
+			return TCL_OK;
+		}
         return TcpAgent::command ( argc, argv );
 }
 
@@ -110,7 +129,7 @@ void SemiTcpAgent::output ( int seqno, int reason )
 {
 	if (!isBackoff_)
 	{
-		NewRenoTcpAgent::output(seqno, reason);
+		TcpAgent::output(seqno, reason);
 		return;
 	}
 	if (reason == TCP_REASON_DUPACK)
@@ -121,7 +140,7 @@ void SemiTcpAgent::output ( int seqno, int reason )
 			outgoingPkts.clear();
 			isBackoff_ = false;
 		}
-		NewRenoTcpAgent::output(seqno, reason);
+		TcpAgent::output(seqno, reason);
 		return;
 	}
 	else
@@ -143,7 +162,7 @@ void SemiTcpAgent::recv ( Packet *pkt, Handler* hand)
 		isBackoff_ = true;
 		initial_backoff_ = false;
 	}
-	NewRenoTcpAgent::recv(pkt, hand);
+	TcpAgent::recv(pkt, hand);
 }
 
 ///Called when the retransimition timer times out

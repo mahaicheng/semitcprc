@@ -64,7 +64,7 @@ class DSRAgent;
 #include <packet.h>
 #include <dsr-priqueue.h>
 #ifdef SEMITCP
-#include <tcp/semitcp.h>
+#include <tcp/matcp.h>
 #include <tcp/tcp-sink.h>
 class TcpSink;
 #endif

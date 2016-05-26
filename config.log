@@ -900,8 +900,8 @@ configure:6914: $? = 0
 configure:6926: result: yes
 configure:6839: checking for fesetprecision
 configure:6896: gcc -o conftest -g -O2   conftest.c -lm  >&5
-/tmp/cc5jCBbU.o:(.data+0x0): undefined reference to `fesetprecision'
-/tmp/cc5jCBbU.o: In function `main':
+/tmp/ccwHRvtU.o:(.data+0x0): undefined reference to `fesetprecision'
+/tmp/ccwHRvtU.o: In function `main':
 /home/ma/ns-allinone-2.29/matcp/conftest.c:85: undefined reference to `fesetprecision'
 collect2: error: ld returned 1 exit status
 configure:6902: $? = 1
@@ -1253,8 +1253,8 @@ configure:8407: $? = 0
 configure:8414: result: found
 configure:8433: checking for addr2ascii
 configure:8490: gcc -o conftest -g -O2   conftest.c -lm  >&5
-/tmp/ccj2CHRb.o:(.data+0x0): undefined reference to `addr2ascii'
-/tmp/ccj2CHRb.o: In function `main':
+/tmp/cc3CrmGb.o:(.data+0x0): undefined reference to `addr2ascii'
+/tmp/cc3CrmGb.o: In function `main':
 /home/ma/ns-allinone-2.29/matcp/conftest.c:96: undefined reference to `addr2ascii'
 collect2: error: ld returned 1 exit status
 configure:8496: $? = 1
@@ -1623,7 +1623,7 @@ PACKAGE_TARNAME=''
 PACKAGE_VERSION=''
 PATH_SEPARATOR=':'
 PERL='/usr/bin/perl'
-SHELL='/bin/bash'
+SHELL='/bin/sh'
 V_ALL=''
 V_AR='ar cr'
 V_BROKEN_OBJ=''

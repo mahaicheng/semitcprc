@@ -39,7 +39,7 @@
 #include <sys/types.h>
 #include "ip.h"
 #include "tcp.h"
-#include "semitcp.h"
+#include "matcp.h"
 #include <algorithm>
 #include <unistd.h>
 
@@ -55,11 +55,11 @@ static class SemiTcpClass : public TclClass
 public:
         SemiTcpClass() : TclClass ( "Agent/TCP/Semi" ) {}
         TclObject* create ( int, const char*const* ) {
-                return ( new SemiTcpAgent() );
+                return ( new MaTcpAgent() );
         }
 } class_semi;
 
-SemiTcpAgent::SemiTcpAgent() : 
+MaTcpAgent::MaTcpAgent() : 
 			backoffTimer_(this),	
 			p_to_mac(nullptr),
 			emptyCount(0),
@@ -74,7 +74,7 @@ SemiTcpAgent::SemiTcpAgent() :
 	
 }
 
-void SemiTcpAgent::backoff_timeout()
+void MaTcpAgent::backoff_timeout()
 {
 	assert(isBackoff_ == true);
 	if (!outgoingPkts.empty())
@@ -102,7 +102,7 @@ void SemiTcpAgent::backoff_timeout()
 	setBackoffTimer();
 }
 
-int SemiTcpAgent::command ( int argc, const char*const* argv )
+int MaTcpAgent::command ( int argc, const char*const* argv )
 {
         if ( argc == 3 && strcmp ( argv[1], "semitcp-get-mac" ) == 0 ) 
 		{
@@ -125,7 +125,7 @@ int SemiTcpAgent::command ( int argc, const char*const* argv )
         return TcpAgent::command ( argc, argv );
 }
 
-void SemiTcpAgent::output ( int seqno, int reason )
+void MaTcpAgent::output ( int seqno, int reason )
 {
 	if (!isBackoff_)
 	{
@@ -155,7 +155,7 @@ void SemiTcpAgent::output ( int seqno, int reason )
 	
 }
 
-void SemiTcpAgent::recv ( Packet *pkt, Handler* hand)
+void MaTcpAgent::recv ( Packet *pkt, Handler* hand)
 {
 	if (!isBackoff_)
 	{
@@ -166,7 +166,7 @@ void SemiTcpAgent::recv ( Packet *pkt, Handler* hand)
 }
 
 ///Called when the retransimition timer times out
-void SemiTcpAgent::timeout ( int tno )
+void MaTcpAgent::timeout ( int tno )
 {
 	/* retransmit timer */
 	if (tno == TCP_TIMER_RTX) {

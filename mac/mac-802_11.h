@@ -54,7 +54,7 @@
 #include "dsr-priqueue.h"
 #include "aodv/aodv.h"
 #include "dsr/dsragent.h"
-#include "tcp/semitcp.h"
+#include "tcp/matcp.h"
 #include <mac.h>
 
 //#define MACDEBUG

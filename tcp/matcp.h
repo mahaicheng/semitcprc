@@ -54,21 +54,21 @@
 #define RECOVER_TIMEOUT 2
 #define RECOVER_QUENCH  3
 
-class SemiTcpAgent; 	//forward declaration
+class MaTcpAgent; 	//forward declaration
 class TcpBackoffTimer : public TimerHandler
 {
 public:
-	TcpBackoffTimer(SemiTcpAgent *a) : a_(a){ }
+	TcpBackoffTimer(MaTcpAgent *a) : a_(a){ }
 private:
 	virtual void expire(Event *e);
-	SemiTcpAgent *a_;
+	MaTcpAgent *a_;
 };
 
-class SemiTcpAgent : public TcpAgent
+class MaTcpAgent : public TcpAgent
 {
 	friend class TcpBackoffTimer;
 public:
-        SemiTcpAgent();
+        MaTcpAgent();
         virtual void recv(Packet *pkt, Handler*);
         virtual void timeout(int tno);
         virtual void output(int seqno, int reason = 0);

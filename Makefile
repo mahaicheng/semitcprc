@@ -1,4 +1,4 @@
-#  Copyright (c) 1994, 1995, 1996
+﻿#  Copyright (c) 1994, 1995, 1996
 # 	The Regents of the University of California.  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -178,7 +178,7 @@ OBJ_CC = \
 	common/ivs.o \
 	common/messpass.o common/tp.o common/tpm.o apps/worm.o \
 	tcp/tcp.o tcp/tcp-sink.o tcp/tcp-reno.o \
-	tcp/tcp-newreno.o tcp/semitcp.o tcp/tcp-ap.o\
+	tcp/tcp-newreno.o tcp/matcp.o tcp/tcp-ap.o\
 	tcp/tcp-vegas.o tcp/tcp-rbp.o tcp/tcp-full.o tcp/rq.o \
 	baytcp/tcp-full-bay.o baytcp/ftpc.o baytcp/ftps.o \
 	tcp/scoreboard.o tcp/scoreboard-rq.o tcp/tcp-sack1.o tcp/tcp-fack.o \

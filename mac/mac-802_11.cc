@@ -83,6 +83,7 @@
 inline void
 Mac802_11::checkBackoffTimer()
 {
+	statistics();
 	if(is_idle() && mhBackoff_.paused())
 		mhBackoff_.resume(phymib_.getDIFS());
 	if(! is_idle() && mhBackoff_.busy() && ! mhBackoff_.paused())
@@ -92,6 +93,7 @@ Mac802_11::checkBackoffTimer()
 inline void
 Mac802_11::transmit(Packet *p, double timeout)
 {
+	statistics();
 	tx_active_ = 1;
 	
 	if (EOTtarget_) {
@@ -127,6 +129,7 @@ Mac802_11::transmit(Packet *p, double timeout)
 inline void
 Mac802_11::setRxState(MacState newState)
 {
+	statistics();
 	rx_state_ = newState;
 	checkBackoffTimer();
 }
@@ -134,6 +137,7 @@ Mac802_11::setRxState(MacState newState)
 inline void
 Mac802_11::setTxState(MacState newState)
 {
+	statistics();
 	tx_state_ = newState;
 	checkBackoffTimer();
 }
@@ -191,6 +195,7 @@ Mac802_11::Mac802_11() :
 	Mac(), phymib_(this), macmib_(this), mhIF_(this), mhNav_(this), 
 #ifdef SEMITCP
 	CALLRT(1),
+	//avg_length(0.0),
 	p_aodv_agent(0),
 	p_to_prique(0),
 
@@ -210,6 +215,11 @@ Mac802_11::Mac802_11() :
 	CTSC_send(0),
 	DATA_recv(0),
 	ACK_send(0),
+	
+	RTS_drop(0),
+	
+	avg_whole(0.0),
+	max_whole(0),
        
 /*******MHC DEBUG***********/
 	round_trip_time(0.020),
@@ -290,7 +300,9 @@ printf("        ACK_send:\t%d\n\n", ACK_send);
 
 printf("   RetransmitRTS:\t%d\n", macmib_.RTSFailureCount);
 printf("  RetransmitDATA:\t%d\n", macmib_.ACKFailureCount);
-printf("     Droped DATA:\t%d\n", macmib_.FailedCount);
+printf("      RTS Droped:\t%d\n", RTS_drop);
+printf("     DATA Droped:\t%d\n\n", macmib_.FailedCount);
+
 printf("  refuse(no CTS):\t%d\n", refuse_other_rts);
 printf(" dead_lock(CTSC):\t%d\n\n", dead_lock);
 
@@ -317,8 +329,8 @@ else
 
 DATA_fail_rate = (double)macmib_.ACKFailureCount / DATA_send;
 
-//printf("       avg_whole:\t%.2f\n",avg_whole);
-//printf("       max_whole:\t%d\n", max_whole);
+printf("       avg_whole:\t%.2f\n",avg_whole);
+printf("       max_whole:\t%d\n", max_whole);
 printf("   RTS_fail_rate:\t%.2f%%\n", RTS_fail_rate * 100.0);
 printf(" RTS_refuse_rate:\t%.2f%%\n", RTS_refuse_rate * 100.0);
 printf("    RTS_CTS_rate:\t%.2f%%\n", RTS_CTS_rate * 100.0);
@@ -512,6 +524,7 @@ Mac802_11::hdr_type(char* hdr, u_int16_t type)
 inline int
 Mac802_11::is_idle()
 {
+	statistics();
 	if(rx_state_ != MAC_IDLE)
 		return 0;
 	if(tx_state_ != MAC_IDLE)
@@ -591,6 +604,7 @@ Mac802_11::discard(Packet *p, const char* why)
 void
 Mac802_11::capture(Packet *p)
 {
+	statistics();
 	/*
 	 * Update the NAV so that this does not screw
 	 * up carrier sense.
@@ -602,6 +616,7 @@ Mac802_11::capture(Packet *p)
 void
 Mac802_11::collision(Packet *p)
 {
+	statistics();
 	switch(rx_state_) {
 	case MAC_RECV:
 		setRxState(MAC_COLL);
@@ -633,6 +648,7 @@ Mac802_11::collision(Packet *p)
 void
 Mac802_11::tx_resume()
 {
+	statistics();
 	double rTime;
 	assert(mhSend_.busy() == 0);
 	assert(mhDefer_.busy() == 0);
@@ -704,6 +720,7 @@ Mac802_11::tx_resume()
 void
 Mac802_11::rx_resume()
 {
+	statistics();
 	assert(pktRx_ == 0);
 	assert(mhRecv_.busy() == 0);
 	setRxState(MAC_IDLE);
@@ -716,6 +733,7 @@ Mac802_11::rx_resume()
 void
 Mac802_11::backoffHandler()
 {
+	statistics();
 	if(pktCTRL_) {
 		assert(mhSend_.busy() || mhDefer_.busy());
 		return;
@@ -730,6 +748,7 @@ Mac802_11::backoffHandler()
 void
 Mac802_11::deferHandler()
 {
+	statistics();
 	assert(pktCTRL_ || pktRTS_ || pktTx_);
 
 	if(check_pktCTRL() == 0) {
@@ -745,6 +764,7 @@ Mac802_11::deferHandler()
 void
 Mac802_11::navHandler()
 {
+	statistics();
 	if(is_idle() && mhBackoff_.paused())
 		mhBackoff_.resume(phymib_.getDIFS());
 }
@@ -780,6 +800,7 @@ Mac802_11::txHandler()
 void
 Mac802_11::send_timer()
 {
+	statistics();
 	switch(tx_state_) {
 	/*
 	 * Sent a RTS, but did not receive a CTS.
@@ -849,6 +870,7 @@ Mac802_11::send_timer()
 int
 Mac802_11::check_pktCTRL()
 {
+	statistics();
 	struct hdr_mac802_11 *mh;
 	double timeout;
 
@@ -971,6 +993,7 @@ Mac802_11::check_pktCTRL()
 int
 Mac802_11::check_pktRTS()
 {
+	statistics();
 #ifdef SEMITCP
 	if(pktRTS_ && pktPre_)
 		assert(HDR_CMN(pktTx_)->control_packet());
@@ -1026,6 +1049,7 @@ Mac802_11::check_pktRTS()
 int
 Mac802_11::check_pktTx()
 {
+	statistics();
 	struct hdr_mac802_11 *mh;
 	double timeout;
 	
@@ -1080,6 +1104,7 @@ Mac802_11::check_pktTx()
 void
 Mac802_11::sendRTS(int dst)
 {
+	statistics();
 	Packet *p = Packet::alloc();
 	hdr_cmn* ch = HDR_CMN(p);
 	struct rts_frame *rf = (struct rts_frame*)p->access(hdr_mac::offset_);
@@ -1150,6 +1175,7 @@ void
 Mac802_11::sendCTS(int dst, double rts_duration)
 #endif
 {
+	statistics();
 	Packet *p = Packet::alloc();
 	hdr_cmn* ch = HDR_CMN(p);
 	struct cts_frame *cf = (struct cts_frame*)p->access(hdr_mac::offset_);
@@ -1198,6 +1224,7 @@ Mac802_11::sendCTS(int dst, double rts_duration)
 void
 Mac802_11::sendACK(int dst)
 {
+	statistics();
 	Packet *p = Packet::alloc();
 	hdr_cmn* ch = HDR_CMN(p);
 	struct ack_frame *af = (struct ack_frame*)p->access(hdr_mac::offset_);
@@ -1240,6 +1267,7 @@ Mac802_11::sendACK(int dst)
 void
 Mac802_11::sendDATA(Packet *p)
 {
+	statistics();
 	hdr_cmn* ch = HDR_CMN(p);
 	struct hdr_mac802_11* dh = HDR_MAC802_11(p);
 
@@ -1290,6 +1318,7 @@ Mac802_11::sendDATA(Packet *p)
 void
 Mac802_11::RetransmitRTS()
 {
+	statistics();
 	assert(pktTx_);
 	assert(pktRTS_);
 	assert(mhBackoff_.busy() == 0);
@@ -1298,6 +1327,8 @@ Mac802_11::RetransmitRTS()
 	ssrc_ += 1;			// STA Short Retry Count
 		
 	if(ssrc_ >= macmib_.getShortRetryLimit()) {
+		RTS_drop++;
+		//avg_length += 30.0;
 		discard(pktRTS_, DROP_MAC_RETRY_COUNT_EXCEEDED);
 		pktRTS_ = 0;
 		/* tell the callback the send operation failed 
@@ -1351,6 +1382,7 @@ Mac802_11::RetransmitRTS()
 void
 Mac802_11::RetransmitDATA()
 {
+	statistics();
 	struct hdr_cmn *ch;
 	struct hdr_mac802_11 *mh;
 	u_int32_t *rcount, thresh;
@@ -1394,6 +1426,7 @@ Mac802_11::RetransmitDATA()
 		/* IEEE Spec section 9.2.3.5 says this should be greater than
 		   or equal */
 		macmib_.FailedCount++;	//丢包
+		//avg_length += 1;
 		/* tell the callback the send operation failed 
 		   before discarding the packet */
 		hdr_cmn *ch = HDR_CMN(pktTx_);
@@ -1435,6 +1468,7 @@ Mac802_11::RetransmitDATA()
 void
 Mac802_11::send(Packet *p, Handler *h)
 {
+	statistics();
 	double rTime;
 	struct hdr_mac802_11* dh = HDR_MAC802_11(p);
 
@@ -1501,6 +1535,7 @@ Mac802_11::send(Packet *p, Handler *h)
 void
 Mac802_11::recv(Packet *p, Handler *h)
 {    
+	statistics();
 	struct hdr_cmn *hdr = HDR_CMN(p);
 	/*
 	 * Sanity Check
@@ -1558,6 +1593,7 @@ Mac802_11::recv(Packet *p, Handler *h)
 void
 Mac802_11::recv_timer()
 {
+	statistics();
 	u_int32_t src; 
 	hdr_cmn *ch = HDR_CMN(pktRx_);
 	hdr_mac802_11 *mh = HDR_MAC802_11(pktRx_);
@@ -1688,6 +1724,7 @@ Mac802_11::recv_timer()
 void
 Mac802_11::recvRTS(Packet *p)
 {
+	statistics();
 	struct rts_frame *rf = (struct rts_frame*)p->access(hdr_mac::offset_);
 
 	if(tx_state_ != MAC_IDLE) {
@@ -1752,6 +1789,7 @@ Mac802_11::txtime(double psz, double drt)
 void
 Mac802_11::recvCTS(Packet *p)
 {
+	statistics();
 	if(tx_state_ != MAC_RTS) {
 		discard(p, DROP_MAC_INVALID_STATE);
 		return;
@@ -1802,6 +1840,7 @@ Mac802_11::recvCTS(Packet *p)
 void
 Mac802_11::recvDATA(Packet *p)
 {
+	statistics();
 	struct hdr_mac802_11 *dh = HDR_MAC802_11(p);
 	u_int32_t dst, src, size;
 	struct hdr_cmn *ch = HDR_CMN(p);
@@ -1927,7 +1966,8 @@ Mac802_11::recvDATA(Packet *p)
 
 void
 Mac802_11::recvACK(Packet *p)
-{	
+{
+	statistics();
 	if(tx_state_ != MAC_SEND) {
 		discard(p, DROP_MAC_INVALID_STATE);
 		return;
@@ -1990,12 +2030,17 @@ Mac802_11::recvACK(Packet *p)
 
 bool Mac802_11::congested()
 {
-	double totalLocal = p_to_prique->length();
-	return totalLocal > p_to_prique->congestionThreshold();
+	statistics();
+	static double avg_length = 0.0;
+	int totalLocal = p_to_prique->length() + p_aodv_agent->length();
+	avg_length = avg_length * 0.9 + static_cast<double>(totalLocal) * 0.1;
+	return avg_length >= 0.25;
+	//return totalLocal >= p_to_prique->congestionThreshold();
 }
 
 void Mac802_11::overHear( Packet* p )
 {
+	statistics();
 	hdr_cmn *ch = HDR_CMN ( p );
 	hdr_mac802_11 *mh = HDR_MAC802_11 ( p );
 	u_int32_t dst = ETHER_ADDR ( mh->dh_ra );
@@ -2061,6 +2106,7 @@ void Mac802_11::overHear( Packet* p )
 bool
 Mac802_11::defer_rts(Neighbour *nb)
 {
+	statistics();
     const double helped_t = nb->get_helped_time();
     const double now = Scheduler::instance().clock();
 	
@@ -2075,6 +2121,7 @@ Mac802_11::defer_rts(Neighbour *nb)
 //decide how to react to the recv RTS
 refuse_state Mac802_11::refuse( Packet* p )
 {
+	statistics();
 	Packet* pkt = pktTx_ ? pktTx_ :(pktPre_ ? pktPre_ : p_to_prique->q_->lookup(0));
 	
 	bool queue_head_data_to_rts_sender = false;
@@ -2128,6 +2175,7 @@ refuse_state Mac802_11::refuse( Packet* p )
  */
 void Mac802_11::store_tx()
 {
+	statistics();
 	assert (pktTx_);
 	assert (!pktPre_);
 	assert (!HDR_CMN(pktTx_)->control_packet());
@@ -2155,6 +2203,7 @@ void Mac802_11::store_tx()
 void
 Mac802_11::restore_tx()
 {
+	statistics();
 	nb_congested = -1.0; ///NEWK
 	if(!pktPre_)
 		return;
@@ -2183,3 +2232,49 @@ Mac802_11::restore_tx()
 	}
 }
 #endif
+void Mac802_11::statistics()
+{
+    static double start_time = 0.0;
+    static double last_time = 0.0;
+    static int last_total = 0;
+    static bool first_in = true;
+    
+    double whole_time = 0.0;
+    double duration = 0.0;
+        //record the whole length
+    int maclen = 0;
+    if(pktPre_ && pktTx_)
+	maclen = 2;
+    else if(pktPre_ || pktTx_)
+	maclen = 1;
+    else
+	maclen = 0;
+	
+    int total = p_to_prique->length()+maclen+p_aodv_agent->length();
+    
+    if( !first_in && (total == last_total))
+	return;
+    
+    if(total > max_whole)
+	max_whole = total;
+    
+    int now = Scheduler::instance().clock();
+
+    if(first_in)
+    {	//start_time only set when ns first enter this function
+	start_time = now;
+    }
+    if(!first_in)
+    {
+	whole_time = now - start_time;
+	duration = now - last_time;
+	
+	if(whole_time < 0.000000001)
+	    return;
+	avg_whole = (avg_whole*(last_time-start_time)+duration*last_total) / whole_time;
+    }
+      
+    last_time = now;
+    last_total = total;
+    first_in = false;
+}

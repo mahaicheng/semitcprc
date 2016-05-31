@@ -215,10 +215,10 @@ class AODV: public Agent {
  public:
         AODV(nsaddr_t id);
 #ifdef SEMITCP
-        /*int length()
+        int length()
         {
             return rqueue.length();
-        }*/
+        }
         nsaddr_t nodeIndex() {return index;}
          //void send_down(bool force = false);
 #endif

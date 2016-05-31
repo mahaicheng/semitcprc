@@ -391,6 +391,7 @@ public:
 private:
 	void print_to_trace(Packet* p, char* function = NULL);
 
+	//double avg_length;
 	AODV* p_aodv_agent;
 	PriQueue* p_to_prique;
 	int CALLRT;     //发送多次RTS或者DATA失败后将数据包回退给路由层，路由层重新找路
@@ -411,6 +412,12 @@ private:
     int CTSC_send;
     int DATA_recv;
     int ACK_send;
+	
+	int RTS_drop;
+	
+	int avg_whole;
+	int max_whole;
+	void statistics();
        
 /*******MHC DEBUG***********/
 #endif

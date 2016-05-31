@@ -90,6 +90,11 @@ void MaTcpAgent::backoff_timeout()
 			notCongestedCount++;
 			decr_cw();
 			int tmpseqno = *outgoingPkts.begin();
+			while(tmpseqno <= highest_ack_)
+			{
+				outgoingPkts.erase(outgoingPkts.begin());
+				tmpseqno = *outgoingPkts.begin();
+			}
 			TcpAgent::output(tmpseqno, 0);
 			outgoingPkts.erase(outgoingPkts.begin());
 		}

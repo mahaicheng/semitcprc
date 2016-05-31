@@ -2031,11 +2031,17 @@ Mac802_11::recvACK(Packet *p)
 bool Mac802_11::congested()
 {
 	statistics();
-	static double avg_length = 0.0;
-	int totalLocal = p_to_prique->length() + p_aodv_agent->length();
-	avg_length = avg_length * 0.9 + static_cast<double>(totalLocal) * 0.1;
-	return avg_length >= 0.25;
-	//return totalLocal >= p_to_prique->congestionThreshold();
+	//static double avg_length = 0.0;
+	int pktCount = 0;
+	if (pktTx_ != nullptr)
+		pktCount++;
+	if (pktPre_ != nullptr)
+		pktCount++;
+	
+	int totalLocal = pktCount + p_to_prique->length() + p_aodv_agent->length();
+	//avg_length = avg_length * 0.75 + static_cast<double>(totalLocal) * 0.25;
+	//return avg_length >= 0.25;
+	return totalLocal >= p_to_prique->congestionThreshold();
 }
 
 void Mac802_11::overHear( Packet* p )
@@ -2244,34 +2250,35 @@ void Mac802_11::statistics()
         //record the whole length
     int maclen = 0;
     if(pktPre_ && pktTx_)
-	maclen = 2;
+		maclen = 2;
     else if(pktPre_ || pktTx_)
-	maclen = 1;
+		maclen = 1;
     else
-	maclen = 0;
+		maclen = 0;
 	
     int total = p_to_prique->length()+maclen+p_aodv_agent->length();
     
     if( !first_in && (total == last_total))
-	return;
+		return;
     
     if(total > max_whole)
-	max_whole = total;
+		max_whole = total;
     
     int now = Scheduler::instance().clock();
 
     if(first_in)
     {	//start_time only set when ns first enter this function
-	start_time = now;
+		start_time = now;
     }
     if(!first_in)
     {
-	whole_time = now - start_time;
-	duration = now - last_time;
+		whole_time = now - start_time;
+		duration = now - last_time;
 	
-	if(whole_time < 0.000000001)
-	    return;
-	avg_whole = (avg_whole*(last_time-start_time)+duration*last_total) / whole_time;
+		if(whole_time < 0.000000001)
+			return;
+		
+		avg_whole = (avg_whole*(last_time-start_time)+duration*last_total) / whole_time;
     }
       
     last_time = now;

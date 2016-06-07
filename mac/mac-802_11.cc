@@ -2032,8 +2032,8 @@ bool Mac802_11::congested()
 {
 	statistics();
 	//static double avg_length = 0.0;
+	
 	int pktCount = 0;
-
 	if (pktTx_ != nullptr)
 		pktCount++;
 	if (pktPre_ != nullptr)
@@ -2046,7 +2046,7 @@ bool Mac802_11::congested()
 	else
 		avg_length = avg_length * 0.75 + static_cast<double>(totalLocal) * 0.25;
 	
-	return avg_length >= 0.1;*/
+	return avg_length >= 0.25;*/
 	return totalLocal >= p_to_prique->congestionThreshold();
 }
 

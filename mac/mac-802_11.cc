@@ -888,7 +888,8 @@ Mac802_11::check_pktCTRL()
 	case MAC_Subtype_CTS:
 	{
 		if(!is_idle()) { //Hinden terminal
-			discard(pktCTRL_, DROP_MAC_BUSY); pktCTRL_ = 0;
+			discard(pktCTRL_, DROP_MAC_BUSY); 
+			pktCTRL_ = 0;
 			Packet::free(last_rts_frame);
 			last_rts_frame = NULL;
 			///Fix the bug when the original backoff was stop by comming request
@@ -1323,12 +1324,22 @@ Mac802_11::RetransmitRTS()
 	assert(pktRTS_);
 	assert(mhBackoff_.busy() == 0);
 	macmib_.RTSFailureCount++;
+	
+	if (HDR_CMN(pktTx_)->control_packet())
+	{
+		struct rts_frame *rf;
+		rf = (struct rts_frame*)pktRTS_->access(hdr_mac::offset_);
+		rf->rf_fc.fc_retry = 1;
+		rst_cw();
+		mhBackoff_.start(cw_, is_idle());
+		ssrc_ = 0;
+		return;
+	}
 
 	ssrc_ += 1;			// STA Short Retry Count
 		
 	if(ssrc_ >= macmib_.getShortRetryLimit()) {
 		RTS_drop++;
-		//avg_length += 30.0;
 		discard(pktRTS_, DROP_MAC_RETRY_COUNT_EXCEEDED);
 		pktRTS_ = 0;
 		/* tell the callback the send operation failed 
@@ -1389,11 +1400,35 @@ Mac802_11::RetransmitDATA()
 	assert(mhBackoff_.busy() == 0);
 
 	assert(pktTx_);
-	assert(pktRTS_ == 0);   //RTS was successfully transmited
+	assert(pktRTS_ == 0);   //RTS was successfully transmited or no RTS
 
 	ch = HDR_CMN(pktTx_);
 	mh = HDR_MAC802_11(pktTx_);
 
+	static int AODVCount = 0;
+	if (ch->ptype() == PT_AODV)
+	{
+		if (AODVCount < 2) //retry 2 times
+		{
+			struct hdr_mac802_11 *dh;
+			dh = HDR_MAC802_11(pktTx_);
+			dh->dh_fc.fc_retry = 1;
+			AODVCount++;
+			rst_cw();
+			mhBackoff_.start(cw_, is_idle());
+		}
+		else
+		{
+			Packet::free(pktTx_);
+			pktTx_ = nullptr;
+			AODVCount = 0;
+			rst_cw();
+			mhBackoff_.start(cw_, is_idle());
+		}
+		
+		return;
+	}
+	
 	/*
 	 *  Broadcast packets don't get ACKed and therefore
 	 *  are never retransmitted.
@@ -1512,12 +1547,16 @@ Mac802_11::send(Packet *p, Handler *h)
 	 *  Space before transmitting.
 	 */
 	if(mhBackoff_.busy() == 0) {
+		if (HDR_CMN(p)->ptype() == PT_AODV)
+			rst_cw();
+		
 		if(is_idle()) {
 			if (mhDefer_.busy() == 0) {
 				/*
 				 * If we are already deferring, there is no
 				 * need to reset the Defer timer.
 				 */
+
 				rTime = (Random::random() % cw_)
 					* (phymib_.getSlotTime());
 				mhDefer_.start(phymib_.getDIFS() + rTime);
@@ -2031,23 +2070,16 @@ Mac802_11::recvACK(Packet *p)
 bool Mac802_11::congested()
 {
 	statistics();
-	//static double avg_length = 0.0;
 	
 	int pktCount = 0;
-	if (pktTx_ != nullptr)
+	if (pktTx_ != nullptr && !HDR_CMN(pktTx_)->control_packet())
 		pktCount++;
-	if (pktPre_ != nullptr)
+	if (pktPre_ != nullptr && !HDR_CMN(pktPre_)->control_packet())
 		pktCount++;
 	
-	int totalLocal = pktCount + p_to_prique->length() + p_aodv_agent->length();
+	pktCount += p_to_prique->length() + p_aodv_agent->length();
 	
-	/*if (totalLocal == 0)
-		avg_length = avg_length * 0.75;
-	else
-		avg_length = avg_length * 0.75 + static_cast<double>(totalLocal) * 0.25;
-	
-	return avg_length >= 0.25;*/
-	return totalLocal >= p_to_prique->congestionThreshold();
+	return pktCount >= p_to_prique->congestionThreshold();
 }
 
 void Mac802_11::overHear( Packet* p )
@@ -2142,7 +2174,7 @@ refuse_state Mac802_11::refuse( Packet* p )
 	u_int32_t rts_sender = SENDER(p);
 	
 	if (rf->rf_fc.fc_subtype == MAC_Subtype_uRTS)///the RTS packet is sent for control packet like RREQ
-		return CTS;
+		return CTS;		// NOTE: But actually, the control packets are broadcast, Would not send a RTS
 	bool RTSC = rf->rf_fc.fc_order;
 	bool me_congested = congested();
 	

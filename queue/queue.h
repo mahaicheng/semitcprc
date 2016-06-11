@@ -48,7 +48,8 @@ class Packet;
 class PacketQueue : public TclObject {
 public:
 #ifdef SEMITCP
-	PacketQueue() : head_(0), tail_(0), len_(0), bytes_(0), p_to_aodv(0){}
+	PacketQueue() : head_(0), tail_(0), len_(0), bytes_(0),\
+					p_to_aodv(0){}
 #else
 	PacketQueue() : head_(0), tail_(0), len_(0), bytes_(0) {}
 #endif
@@ -57,6 +58,7 @@ public:
       avgLen = avgLen * 0.8 + len_ * 0.2;
       return avgLen; 
     }
+
 	virtual int byteLength() const { return (bytes_); }
 	virtual Packet* enque(Packet* p) { // Returns previous tail
 		Packet* pt = tail_;
@@ -84,7 +86,9 @@ public:
 	Packet* lookup(int n) {
 		for (Packet* p = head_; p != NULL; p = p->next_) {
 			if (--n < 0)
+			{
 				return (p);
+			}
 		}
 		return (0);
 	}
@@ -113,6 +117,7 @@ protected:
 	Packet* head_;
 	Packet* tail_;
 	int len_;		// packet count
+
 	int bytes_;		// queue size in bytes
 #ifdef SEMITCP
     double avgLen;
@@ -153,6 +158,7 @@ public:
     {
         return pq_->avg_length();
     }
+
 #endif
 
 	int byteLength() { return pq_->byteLength(); }	/* number of bytes *

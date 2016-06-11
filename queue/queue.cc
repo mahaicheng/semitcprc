@@ -46,8 +46,7 @@ static const char rcsid[] =
 Packet* PacketQueue::deque()
     {
 #ifdef SEMITCP
-	//if(!head_) 	//if head_ == NULL, it also means that local_length is zero
-    //       	p_to_aodv->send_down(); //从路由层拉数据包下来
+
         if (!head_) 
 		{	//no packet to send
 			return NULL;
@@ -57,7 +56,7 @@ Packet* PacketQueue::deque()
         head_= p->next_; // nullptr if p == tail_
     if(p == tail_)
         head_= tail_= NULL;
-	
+		
         --len_;
         bytes_ -= hdr_cmn::access(p)->size();
     
@@ -72,6 +71,7 @@ void PacketQueue::remove(Packet* target)
 			else {
 				if (p == tail_) 
 					tail_= pp;
+				
 				pp->next_= p->next_;
 				--len_;
 				bytes_ -= hdr_cmn::access(p)->size();

@@ -219,6 +219,7 @@ class AODV: public Agent {
         {
             return rqueue.length();
         }
+
         nsaddr_t nodeIndex() {return index;}
          //void send_down(bool force = false);
 #endif

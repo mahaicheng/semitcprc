@@ -467,21 +467,19 @@ struct hdr_cmn {
 	int      addr_type_;    // type of next_hop_ addr
 	nsaddr_t last_hop_;     // for tracing on multi-user channels
 	
-#ifdef SEMITCP ///DEBUG
 	//int last_mac_sender;
 	char debug_info[2000];
 	bool debug;
 	hdr_cmn() {
 		debug = FALSE;
 	}
-	bool control_packet() {
-	return (ptype() == PT_DSR
+	bool control_packet() 
+	{
+	return ptype() == PT_DSR
 		|| ptype() == PT_TORA
 		|| ptype() == PT_AODV
-		//|| ptype() == PT_ACK ///JUNE3
-		|| ptype() == PT_ARP);
+		|| ptype() == PT_ARP;
 	}
-#endif
 
 
         // called if pkt can't obtain media or isn't ack'd. not called if

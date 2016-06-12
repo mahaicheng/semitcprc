@@ -37,7 +37,10 @@
 #define ns_tcpsink_h
 
 #include <math.h>
+#include"random.h"
+#include"mac/mac-802_11.h"
 #include "agent.h"
+#include<deque>
 #include "tcp.h"
 
 /* max window size */
@@ -96,7 +99,27 @@ protected:
 	void trace(TracedVar*);
 };
 
+class TcpSinkBackoffTimer : public TimerHandler
+{
+public:
+	TcpSinkBackoffTimer(TcpSink *a) : a_(a) {}
+private:
+	virtual void expire(Event *e);
+	TcpSink *a_;
+};
+
+class TcpSinkSendTimer : public TimerHandler
+{
+public:
+	TcpSinkSendTimer(TcpSink *a) : a_(a) {}
+private:
+	virtual void expire(Event *e);
+	TcpSink *a_;
+};
+
 class TcpSink : public Agent {
+	friend class TcpSinkBackoffTimer;
+	friend class TcpSinkSendTimer;
 public:
 	TcpSink(Acker*);
 	void recv(Packet* pkt, Handler*);
@@ -104,6 +127,18 @@ public:
 	int command(int argc, const char*const* argv);
 	TracedInt& maxsackblocks() { return max_sack_blocks_; }
 protected:
+	void backoff_timeout();
+	void setBackoffTimer()
+	{
+			backoff_timer_.resched((Random::random()%cw_ + 1)*timeslot_);
+	}
+	void send_timeout();
+	void setSendTimer()
+	{
+		//      2*sifs + rts + cts + data + ack
+		double us = 16 + 256 + 256 + 448 + 256;
+		send_timer_.resched(us / 1000000);
+	}
 	void ack(Packet*);
 	virtual void add_to_ack(Packet* pkt);
 
@@ -126,6 +161,30 @@ protected:
 					// for RFC2581-compliant gap-filling.
 	double lastreset_; 	/* W.N. used for detecting packets  */
 				/* from previous incarnations */
+				
+	Mac802_11 *p_to_mac;
+	std::deque<Packet*> outgoingPkts;
+	TcpSinkBackoffTimer backoff_timer_;
+	TcpSinkSendTimer send_timer_;
+	
+	double timeslot_;
+	int cw_;
+	void incr_cw()
+	{
+		cw_ <<= 1;
+		if (cw_ > 1024)
+			cw_ = 1024;
+	}
+	void decr_cw()
+	{
+		cw_ >>= 1;
+		if (cw_ < 1)
+			cw_ = 1;
+	}
+	void reset_cw()
+	{
+		cw_ = 1;
+	}
 };
 
 class DelAckSink;

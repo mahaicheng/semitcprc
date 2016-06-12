@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 1991-1997 Regents of the University of California.
  * All rights reserved.
@@ -38,6 +38,9 @@
 #include "ip.h"
 #include "tcp-sink.h"
 #include "hdr_qs.h"
+#include<algorithm>
+
+using namespace std;
 
 static class TcpSinkClass : public TclClass {
 public:
@@ -176,7 +179,13 @@ int Acker::update(int seq, int numBytes)
 	return numToDeliver;
 }
 
-TcpSink::TcpSink(Acker* acker) : Agent(PT_ACK), acker_(acker), save_(NULL),	lastreset_(0.0)
+TcpSink::TcpSink(Acker* acker) : Agent(PT_ACK), acker_(acker), 
+			save_(NULL),	lastreset_(0.0), 
+			backoff_timer_(this),
+			send_timer_(this),
+			timeslot_(0.000016),
+			cw_(1),
+			p_to_mac(nullptr)
 {
 	bytes_ = 0; 
 	bind("bytes_", &bytes_);
@@ -233,6 +242,48 @@ void Acker::update_ecn_unacked(int value)
 	ecn_unacked_ = value;
 }
 
+void TcpSinkBackoffTimer::expire(Event *)
+{
+	a_->backoff_timeout();
+}
+
+void TcpSinkSendTimer::expire(Event *)
+{
+	a_->send_timeout();
+}
+
+void TcpSink::backoff_timeout()
+{
+	if (p_to_mac->congested())
+	{
+		incr_cw();
+		setBackoffTimer();
+	}
+	else
+	{
+		if (outgoingPkts.empty())
+		{
+			reset_cw();
+			setBackoffTimer();
+			return;
+		}
+		
+		sort(outgoingPkts.begin(), outgoingPkts.end());
+		
+		Packet *p = outgoingPkts.front();
+		send(p, 0);
+		outgoingPkts.pop_front();
+		
+		setSendTimer();
+	}
+}
+
+void TcpSink::send_timeout()
+{
+	reset_cw();
+	setBackoffTimer();
+}
+
 int TcpSink::command(int argc, const char*const* argv)
 {
 	if (argc == 2) {
@@ -246,6 +297,12 @@ int TcpSink::command(int argc, const char*const* argv)
 			return (TCL_OK);
 		}
 	}
+	else if ( argc == 3 && strcmp ( argv[1], "tcpsink-get-mac" ) == 0 ) 
+	{
+            p_to_mac = ( Mac802_11* ) TclObject::lookup ( argv[2] );		
+			return p_to_mac == NULL ? TCL_ERROR : TCL_OK;
+    } 
+
 	return (Agent::command(argc, argv));
 }
 
@@ -335,8 +392,13 @@ void TcpSink::ack(Packet* opkt)
         // Andrei Gurtov
         acker_->last_ack_sent_ = ntcp->seqno();
         // printf("ACK %d ts %f\n", ntcp->seqno(), ntcp->ts_echo());
+		
+	outgoingPkts.push_back(npkt);
 	
-	send(npkt, 0);
+	if (backoff_timer_.status() == TIMER_IDLE)
+		setBackoffTimer();
+	
+	//send(npkt, 0);
 	// send it
 }
 void TcpSink::add_to_ack(Packet*)

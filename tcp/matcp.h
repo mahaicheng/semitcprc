@@ -54,7 +54,8 @@
 #define RECOVER_TIMEOUT 2
 #define RECOVER_QUENCH  3
 
-class MaTcpAgent; 	//forward declaration
+class MaTcpAgent;
+
 class TcpBackoffTimer : public TimerHandler
 {
 public:
@@ -64,34 +65,57 @@ private:
 	MaTcpAgent *a_;
 };
 
+class TcpSendTimer : public TimerHandler
+{
+public:
+	TcpSendTimer(MaTcpAgent *a) : a_(a) {}
+private:
+	virtual void expire(Event *e);
+	MaTcpAgent *a_;
+};
+
 class MaTcpAgent : public TcpAgent
 {
 	friend class TcpBackoffTimer;
+	friend class TcpSendTimer;
 public:
         MaTcpAgent();
-        virtual void recv(Packet *pkt, Handler*);
-        virtual void timeout(int tno);
-        virtual void output(int seqno, int reason = 0);
         int command(int argc, const char*const* argv);
-private:
+protected:
+        virtual void timeout(int tno);
+		virtual void dupack_action();
+		virtual void send_one();
+		virtual void send_much(int force, int reason, int maxburst = 0);
 		void backoff_timeout();
 		void setBackoffTimer()
 		{
 			backoffTimer_.resched((Random::random()%cw_ + 1)*timeslot_);
 		}
-		void incr_cw(){cw_ <<= 1; if(cw_ > 64) cw_ = 64;}
+		void incr_cw(){cw_ <<= 1; if(cw_ > 1024) cw_ = 1024;}
 		void decr_cw(){cw_ >>= 1; if(cw_ < 1) cw_ = 1;}
 		void reset_cw(){cw_ = 1;}
-
+		
+		void send_timeout();
+		void setSendTimer()
+		{
+			//      2*sifs + rts + cts + data + ack
+			double us = 16 + 256 + 256 + 2496 + 256;
+			sendTimer_.resched(us / 1000000);
+		}
+		
+private:
         Mac802_11* p_to_mac;
         TcpBackoffTimer backoffTimer_;
-		set<int> outgoingPkts;
+		TcpSendTimer sendTimer_;
+		std::set<int> retranmitPkts;
+		
+		// debug
 		int emptyCount;
 		int notEmptyCount;
 		int congestedCount;
 		int notCongestedCount;
-		bool isBackoff_;
-		bool initial_backoff_;
+		// end of debug
+		
 		int cw_;
 		double timeslot_;
 };

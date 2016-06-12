@@ -37,9 +37,11 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <sys/types.h>
+#include<set>
 #include "ip.h"
 #include "tcp.h"
 #include "matcp.h"
+#include"timer-handler.h"
 #include <algorithm>
 #include <unistd.h>
 
@@ -48,6 +50,11 @@ using namespace std;
 void TcpBackoffTimer::expire(Event *)
 {
 	a_->backoff_timeout();
+}
+
+void TcpSendTimer::expire(Event* e)
+{
+	a_->send_timeout();
 }
 
 static class SemiTcpClass : public TclClass
@@ -61,50 +68,89 @@ public:
 
 MaTcpAgent::MaTcpAgent() : 
 			backoffTimer_(this),	
+			sendTimer_(this),
 			p_to_mac(nullptr),
 			emptyCount(0),
 			notEmptyCount(0),
 			congestedCount(0),
 			notCongestedCount(0),
-			isBackoff_(true),
-			initial_backoff_(false),
 			cw_(1),
-			timeslot_(0.001)
+			timeslot_(0.000016)
 { 
 	
 }
 
+void MaTcpAgent::send_much(int force, int reason, int maxburst)
+{
+	send_idle_helper();
+
+	delsnd_timer_.force_cancel();
+
+	/* Save time when first packet was sent, for newreno  --Allman */
+	if (t_seqno_ == 0)
+		firstsent_ = Scheduler::instance().clock();
+
+	if (t_seqno_ < curseq_) {
+			output(t_seqno_, reason);
+			if (QOption_)
+				process_qoption_after_send () ; 
+			t_seqno_ ++ ;
+
+	}
+	
+	if (backoffTimer_.status() == TIMER_IDLE)
+		setBackoffTimer();
+	
+	/* call helper function */
+	send_helper(maxburst);
+}
+
+void MaTcpAgent::send_timeout()
+{
+	reset_cw();
+	setBackoffTimer();
+}
+
 void MaTcpAgent::backoff_timeout()
 {
-	assert(isBackoff_ == true);
-	if (!outgoingPkts.empty())
+	if (p_to_mac->congested())
 	{
-		notEmptyCount++;
-		if (p_to_mac->congested())
+		congestedCount++;
+		incr_cw();
+		setBackoffTimer();
+	}
+	else 	// not congested
+	{
+		notCongestedCount++;
+		if (!retranmitPkts.empty())
 		{
-			congestedCount++;
-			incr_cw();
+			auto iter = lower_bound(retranmitPkts.begin(), retranmitPkts.end(), highest_ack_+1);
+			if (iter != retranmitPkts.end())
+			{
+				retranmitPkts.erase(retranmitPkts.begin(), iter);
+			}
+
+			if (!retranmitPkts.empty())
+			{
+				notEmptyCount++;
+				iter = retranmitPkts.begin();
+				output(*iter);			
+			}
+			else
+			{
+				emptyCount++;
+				send_much(1, 0, 1);
+			}
 		}
 		else
 		{
-			notCongestedCount++;
-			decr_cw();
-			int tmpseqno = *outgoingPkts.begin();
-			while(tmpseqno <= highest_ack_)
-			{
-				outgoingPkts.erase(outgoingPkts.begin());
-				tmpseqno = *outgoingPkts.begin();
-			}
-			TcpAgent::output(tmpseqno, 0);
-			outgoingPkts.erase(outgoingPkts.begin());
+			emptyCount++;
+			send_much(1, 0, 1);
 		}
+		//setSendTimer();
+		reset_cw();
+		setBackoffTimer();
 	}
-	else
-	{
-		emptyCount++;
-	}
-	
-	setBackoffTimer();
 }
 
 int MaTcpAgent::command ( int argc, const char*const* argv )
@@ -130,54 +176,11 @@ int MaTcpAgent::command ( int argc, const char*const* argv )
         return TcpAgent::command ( argc, argv );
 }
 
-void MaTcpAgent::output ( int seqno, int reason )
-{
-	if (!isBackoff_)
-	{
-		TcpAgent::output(seqno, reason);
-		return;
-	}
-	if (reason == TCP_REASON_DUPACK)
-	{
-		backoffTimer_.force_cancel();
-		if (!outgoingPkts.empty())
-		{
-			outgoingPkts.clear();
-			isBackoff_ = false;
-		}
-		TcpAgent::output(seqno, reason);
-		return;
-	}
-	else
-	{
-		outgoingPkts.insert(seqno);
-	}
-	if (!initial_backoff_)
-	{
-		backoff_timeout();
-		initial_backoff_ = true;
-	}
-	
-}
-
-void MaTcpAgent::recv ( Packet *pkt, Handler* hand)
-{
-	if (!isBackoff_)
-	{
-		isBackoff_ = true;
-		initial_backoff_ = false;
-	}
-	TcpAgent::recv(pkt, hand);
-}
-
 ///Called when the retransimition timer times out
 void MaTcpAgent::timeout ( int tno )
 {
 	/* retransmit timer */
 	if (tno == TCP_TIMER_RTX) {
-		backoffTimer_.force_cancel();
-		isBackoff_ = false;
-		outgoingPkts.clear();
 
 		// There has been a timeout - will trace this event
 		trace_event("TIMEOUT");
@@ -225,13 +228,60 @@ void MaTcpAgent::timeout ( int tno )
 		   (2) we rarely get any buffer overflow in multihop networks with consistent
 		       link layer bandwidth
 		   then we don't need to back off (verified by simulations). 
-		 */
-		reset_rtx_timer(0,0);
-		
+		 */	
 		last_cwnd_action_ = CWND_ACTION_TIMEOUT;
-		send_much(0, TCP_REASON_TIMEOUT, maxburst_);
+		output(highest_ack_ + 1);
+		backoffTimer_.force_cancel();
+		setSendTimer();
 	} 
 	else {
+		assert(0);
 		timeout_nonrtx(tno);
 	}
+}
+
+void MaTcpAgent::dupack_action()
+{
+	int recovered = (highest_ack_ > recover_);
+	if (recovered || (!bug_fix_ && !ecn_)) {
+		goto tahoe_action;
+	}
+
+	if (ecn_ && last_cwnd_action_ == CWND_ACTION_ECN) {
+		last_cwnd_action_ = CWND_ACTION_DUPACK;
+		slowdown(CLOSE_CWND_ONE);
+		output(highest_ack_ + 1);
+		backoffTimer_.force_cancel();
+		setSendTimer();
+		//reset_rtx_timer(0,0);
+		return;
+	}
+
+	if (bug_fix_) {
+		/*
+		 * The line below, for "bug_fix_" true, avoids
+		 * problems with multiple fast retransmits in one
+		 * window of data. 
+		 */
+		return;
+	}
+
+tahoe_action:
+        recover_ = maxseq_;
+        if (!lossQuickStart()) {
+		// we are now going to fast-retransmit and willtrace that event
+		trace_event("FAST_RETX");
+		last_cwnd_action_ = CWND_ACTION_DUPACK;
+		slowdown(CLOSE_SSTHRESH_HALF|CLOSE_CWND_ONE);
+	}
+	output(highest_ack_ + 1);
+	backoffTimer_.force_cancel();
+	setSendTimer();
+	//reset_rtx_timer(0,0);
+	return;
+}
+
+void MaTcpAgent::send_one()
+{
+	// nothing to do
 }

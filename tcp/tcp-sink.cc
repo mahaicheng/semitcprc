@@ -254,28 +254,29 @@ void TcpSinkSendTimer::expire(Event *)
 
 void TcpSink::backoff_timeout()
 {
-	if (p_to_mac->congested())
+	if (p_to_mac->congested() || outgoingPkts.empty())
 	{
 		incr_cw();
-		setBackoffTimer();
 	}
 	else
-	{
-		if (outgoingPkts.empty())
-		{
-			reset_cw();
-			setBackoffTimer();
-			return;
-		}
+	{	
+		if (outgoingPkts.size() > p_to_mac->maxAckQueueSize_)
+			p_to_mac->maxAckQueueSize_ = outgoingPkts.size();
 		
-		sort(outgoingPkts.begin(), outgoingPkts.end());
-		
-		Packet *p = outgoingPkts.front();
+		Packet *p = outgoingPkts.back();
 		send(p, 0);
-		outgoingPkts.pop_front();
+		outgoingPkts.pop_back();
 		
-		setSendTimer();
+		for (Packet *p : outgoingPkts)
+		{
+			Packet::free(p);
+		}
+		outgoingPkts.clear();
+		
+		decr_cw();
+		//setSendTimer();
 	}
+	setBackoffTimer();
 }
 
 void TcpSink::send_timeout()

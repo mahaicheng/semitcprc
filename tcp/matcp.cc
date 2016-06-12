@@ -70,14 +70,26 @@ MaTcpAgent::MaTcpAgent() :
 			backoffTimer_(this),	
 			sendTimer_(this),
 			p_to_mac(nullptr),
-			emptyCount(0),
-			notEmptyCount(0),
 			congestedCount(0),
 			notCongestedCount(0),
 			cw_(1),
 			timeslot_(0.000016)
 { 
 	
+}
+
+void MaTcpAgent::recv(Packet *p, Handler *h)
+{
+	hdr_tcp *tcph = hdr_tcp::access(p);
+	
+	if (tcph->seqno() == highest_ack_) 	//dupack ack packet
+		backoffTimer_.force_cancel();
+	else if (tcph->seqno() > highest_ack_ && backoffTimer_.status() == TIMER_IDLE)
+	{
+		setBackoffTimer();
+	}
+	
+	TcpAgent::recv(p, h);
 }
 
 void MaTcpAgent::send_much(int force, int reason, int maxburst)
@@ -95,7 +107,6 @@ void MaTcpAgent::send_much(int force, int reason, int maxburst)
 			if (QOption_)
 				process_qoption_after_send () ; 
 			t_seqno_ ++ ;
-
 	}
 	
 	if (backoffTimer_.status() == TIMER_IDLE)
@@ -117,40 +128,15 @@ void MaTcpAgent::backoff_timeout()
 	{
 		congestedCount++;
 		incr_cw();
-		setBackoffTimer();
 	}
 	else 	// not congested
 	{
 		notCongestedCount++;
-		if (!retranmitPkts.empty())
-		{
-			auto iter = lower_bound(retranmitPkts.begin(), retranmitPkts.end(), highest_ack_+1);
-			if (iter != retranmitPkts.end())
-			{
-				retranmitPkts.erase(retranmitPkts.begin(), iter);
-			}
-
-			if (!retranmitPkts.empty())
-			{
-				notEmptyCount++;
-				iter = retranmitPkts.begin();
-				output(*iter);			
-			}
-			else
-			{
-				emptyCount++;
-				send_much(1, 0, 1);
-			}
-		}
-		else
-		{
-			emptyCount++;
-			send_much(1, 0, 1);
-		}
+		send_much(1, 0, 1);
 		//setSendTimer();
-		reset_cw();
-		setBackoffTimer();
+		decr_cw();
 	}
+	setBackoffTimer();
 }
 
 int MaTcpAgent::command ( int argc, const char*const* argv )
@@ -167,10 +153,8 @@ int MaTcpAgent::command ( int argc, const char*const* argv )
         }
         else if (argc == 2 && strcmp(argv[1], "emptyCount") == 0)
 		{
-			fprintf(stderr, "\nemptyCount:\t\t%d\n\n", emptyCount);
-			fprintf(stderr, "notEmptyCount:\t\t%d\n", notEmptyCount);
-			fprintf(stderr, "\tcongestedCount:\t\t%d\n", congestedCount);
-			fprintf(stderr, "\tnotCongestedCount:\t%d\n\n", notCongestedCount);
+			fprintf(stderr, "congestedCount:\t\t%d\n", congestedCount);
+			fprintf(stderr, "notCongestedCount:\t%d\n\n", notCongestedCount);
 			return TCL_OK;
 		}
         return TcpAgent::command ( argc, argv );
@@ -232,10 +216,9 @@ void MaTcpAgent::timeout ( int tno )
 		last_cwnd_action_ = CWND_ACTION_TIMEOUT;
 		output(highest_ack_ + 1);
 		backoffTimer_.force_cancel();
-		setSendTimer();
 	} 
 	else {
-		assert(0);
+		assert(0); 	// would not run to here
 		timeout_nonrtx(tno);
 	}
 }
@@ -252,7 +235,6 @@ void MaTcpAgent::dupack_action()
 		slowdown(CLOSE_CWND_ONE);
 		output(highest_ack_ + 1);
 		backoffTimer_.force_cancel();
-		setSendTimer();
 		//reset_rtx_timer(0,0);
 		return;
 	}
@@ -276,7 +258,6 @@ tahoe_action:
 	}
 	output(highest_ack_ + 1);
 	backoffTimer_.force_cancel();
-	setSendTimer();
 	//reset_rtx_timer(0,0);
 	return;
 }

@@ -177,7 +177,7 @@ protected:
 	}
 	void decr_cw()
 	{
-		cw_ >>= 1;
+		cw_ -= 8;
 		if (cw_ < 1)
 			cw_ = 1;
 	}

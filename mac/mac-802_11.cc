@@ -220,6 +220,8 @@ Mac802_11::Mac802_11() :
 	
 	avg_whole(0.0),
 	max_whole(0),
+	
+	maxAckQueueSize_(0),
        
 /*******MHC DEBUG***********/
 	round_trip_time(0.020),
@@ -336,6 +338,7 @@ printf(" RTS_refuse_rate:\t%.2f%%\n", RTS_refuse_rate * 100.0);
 printf("    RTS_CTS_rate:\t%.2f%%\n", RTS_CTS_rate * 100.0);
 printf("  DATA_fail_rate:\t%.2f%%\n", DATA_fail_rate * 100.0);
 printf("all_success_rate:\t%.2f%%\n\n", all_success_rate * 100.0);
+printf(" maxAckQueueSize:\t%d\n\n", maxAckQueueSize_);
 
 	return TCL_OK;
     }   
@@ -1405,7 +1408,7 @@ Mac802_11::RetransmitDATA()
 	ch = HDR_CMN(pktTx_);
 	mh = HDR_MAC802_11(pktTx_);
 
-	static int AODVCount = 0;
+	/*static int AODVCount = 0;
 	if (ch->ptype() == PT_AODV)
 	{
 		if (AODVCount < 2) //retry 2 times
@@ -1427,7 +1430,7 @@ Mac802_11::RetransmitDATA()
 		}
 		
 		return;
-	}
+	}*/
 	
 	/*
 	 *  Broadcast packets don't get ACKed and therefore

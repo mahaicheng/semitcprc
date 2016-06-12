@@ -80,6 +80,7 @@ class MaTcpAgent : public TcpAgent
 	friend class TcpSendTimer;
 public:
         MaTcpAgent();
+		virtual void recv(Packet*, Handler*);
         int command(int argc, const char*const* argv);
 protected:
         virtual void timeout(int tno);
@@ -92,7 +93,7 @@ protected:
 			backoffTimer_.resched((Random::random()%cw_ + 1)*timeslot_);
 		}
 		void incr_cw(){cw_ <<= 1; if(cw_ > 1024) cw_ = 1024;}
-		void decr_cw(){cw_ >>= 1; if(cw_ < 1) cw_ = 1;}
+		void decr_cw(){cw_ -= 8; if(cw_ < 1) cw_ = 1;}
 		void reset_cw(){cw_ = 1;}
 		
 		void send_timeout();
@@ -107,11 +108,8 @@ private:
         Mac802_11* p_to_mac;
         TcpBackoffTimer backoffTimer_;
 		TcpSendTimer sendTimer_;
-		std::set<int> retranmitPkts;
 		
 		// debug
-		int emptyCount;
-		int notEmptyCount;
 		int congestedCount;
 		int notCongestedCount;
 		// end of debug

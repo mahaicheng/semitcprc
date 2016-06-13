@@ -257,10 +257,8 @@ BackoffTimer::start(int cw, int idle)
 	busy_ = 1;
 	paused_ = 0;
 	stime = s.clock();
-	
+
 	rtime = (Random::random() % cw) * mac->phymib_.getSlotTime();
-
-
 
 #ifdef USE_SLOT_TIME
 	ROUND_TIME();

@@ -43,7 +43,6 @@
    ====================================================================== */
 class Mac802_11;
 
-#ifdef SEMITCP
 class NBTimer : public Handler
 {
 	protected:
@@ -59,7 +58,7 @@ class NBTimer : public Handler
 		void stop(void);
 		void handle(Event *);
 };
-#endif
+
 class MacTimer : public Handler {
 public:
 	MacTimer(Mac802_11* m) : mac(m) {

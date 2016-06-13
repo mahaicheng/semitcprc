@@ -71,6 +71,8 @@ MaTcpAgent::MaTcpAgent() :
 			sendTimer_(this),
 			p_to_mac(nullptr),
 			congestedCount(0),
+			retryCount(0),
+			maxRetryCount(0),
 			notCongestedCount(0),
 			cw_(1),
 			timeslot_(0.000016)
@@ -127,16 +129,41 @@ void MaTcpAgent::backoff_timeout()
 	if (p_to_mac->congested())
 	{
 		congestedCount++;
+		retryCount++;
+		
+		maxRetryCount = std::max(retryCount, maxRetryCount);
+		
 		incr_cw();
+		setBackoffTimer();
 	}
 	else 	// not congested
 	{
+		retryCount = 0;
 		notCongestedCount++;
+		
+		/*if (!retransmitPkts.empty())
+		{
+			auto iter = lower_bound(retransmitPkts.begin(), retransmitPkts.end(), highest_ack_ + 1);
+			if (iter != retransmitPkts.end())
+			{
+				retransmitPkts.erase(retransmitPkts.begin(), iter);
+			}
+			
+			if (!retransmitPkts.empty())
+			{
+				output(*retransmitPkts.begin());
+				decr_cw();
+				setBackoffTimer();
+				return;
+			}
+		}*/
+
 		send_much(1, 0, 1);
-		//setSendTimer();
+		
 		decr_cw();
+		setBackoffTimer();
+		//setSendTimer();
 	}
-	setBackoffTimer();
 }
 
 int MaTcpAgent::command ( int argc, const char*const* argv )
@@ -153,6 +180,7 @@ int MaTcpAgent::command ( int argc, const char*const* argv )
         }
         else if (argc == 2 && strcmp(argv[1], "emptyCount") == 0)
 		{
+			fprintf(stderr, "maxRetryCount:\t\t%d\n", maxRetryCount);
 			fprintf(stderr, "congestedCount:\t\t%d\n", congestedCount);
 			fprintf(stderr, "notCongestedCount:\t%d\n\n", notCongestedCount);
 			return TCL_OK;
@@ -214,6 +242,7 @@ void MaTcpAgent::timeout ( int tno )
 		   then we don't need to back off (verified by simulations). 
 		 */	
 		last_cwnd_action_ = CWND_ACTION_TIMEOUT;
+		//retransmitPkts.insert(highest_ack_ + 1);
 		output(highest_ack_ + 1);
 		backoffTimer_.force_cancel();
 	} 
@@ -233,6 +262,7 @@ void MaTcpAgent::dupack_action()
 	if (ecn_ && last_cwnd_action_ == CWND_ACTION_ECN) {
 		last_cwnd_action_ = CWND_ACTION_DUPACK;
 		slowdown(CLOSE_CWND_ONE);
+		//retransmitPkts.insert(highest_ack_ + 1);
 		output(highest_ack_ + 1);
 		backoffTimer_.force_cancel();
 		//reset_rtx_timer(0,0);
@@ -256,6 +286,7 @@ tahoe_action:
 		last_cwnd_action_ = CWND_ACTION_DUPACK;
 		slowdown(CLOSE_SSTHRESH_HALF|CLOSE_CWND_ONE);
 	}
+	//retransmitPkts.insert(highest_ack_ + 1);
 	output(highest_ack_ + 1);
 	backoffTimer_.force_cancel();
 	//reset_rtx_timer(0,0);

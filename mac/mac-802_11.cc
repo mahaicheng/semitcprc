@@ -195,7 +195,6 @@ Mac802_11::Mac802_11() :
 	Mac(), phymib_(this), macmib_(this), mhIF_(this), mhNav_(this), 
 #ifdef SEMITCP
 	CALLRT(1),
-	//avg_length(0.0),
 	p_aodv_agent(0),
 	p_to_prique(0),
 
@@ -1327,17 +1326,6 @@ Mac802_11::RetransmitRTS()
 	assert(pktRTS_);
 	assert(mhBackoff_.busy() == 0);
 	macmib_.RTSFailureCount++;
-	
-	if (HDR_CMN(pktTx_)->control_packet())
-	{
-		struct rts_frame *rf;
-		rf = (struct rts_frame*)pktRTS_->access(hdr_mac::offset_);
-		rf->rf_fc.fc_retry = 1;
-		rst_cw();
-		mhBackoff_.start(cw_, is_idle());
-		ssrc_ = 0;
-		return;
-	}
 
 	ssrc_ += 1;			// STA Short Retry Count
 		
@@ -1408,7 +1396,7 @@ Mac802_11::RetransmitDATA()
 	ch = HDR_CMN(pktTx_);
 	mh = HDR_MAC802_11(pktTx_);
 
-	/*static int AODVCount = 0;
+	static int AODVCount = 0;
 	if (ch->ptype() == PT_AODV)
 	{
 		if (AODVCount < 2) //retry 2 times
@@ -1430,7 +1418,7 @@ Mac802_11::RetransmitDATA()
 		}
 		
 		return;
-	}*/
+	}
 	
 	/*
 	 *  Broadcast packets don't get ACKed and therefore
@@ -2045,10 +2033,15 @@ Mac802_11::recvACK(Packet *p)
 	 * need to check the size of the packet we sent that's being
 	 * ACK'd, not the size of the ACK packet.
 	 */
+	
 	if((u_int32_t) HDR_CMN(pktTx_)->size() <= macmib_.getRTSThreshold())
+	{
 		ssrc_ = 0;
+	}
 	else
+	{
 		slrc_ = 0;
+	}
 	
 	rst_cw();
 	Packet::free(pktTx_); 
@@ -2157,15 +2150,16 @@ Mac802_11::defer_rts(Neighbour *nb)
     const double helped_t = nb->get_helped_time();
     const double now = Scheduler::instance().clock();
 	
-    if(congested())	//本节点拥塞了，不推迟发送RTS
-	return false;
+    if(congested())	//本节点拥塞了，不推迟发送RTS or RTSC
+		return false;
     else if(kk < KK && now - nb_congested < round_trip_time)
-	return true;
+		return true;
     else
-	return false;
+		return false;
 }
 
-//decide how to react to the recv RTS
+// NOTE: key function 
+// decide how to react to the received RTS
 refuse_state Mac802_11::refuse( Packet* p )
 {
 	statistics();
@@ -2176,7 +2170,7 @@ refuse_state Mac802_11::refuse( Packet* p )
 	struct rts_frame *rf = (struct rts_frame*)p->access(hdr_mac::offset_);
 	u_int32_t rts_sender = SENDER(p);
 	
-	if (rf->rf_fc.fc_subtype == MAC_Subtype_uRTS)///the RTS packet is sent for control packet like RREQ
+	if (rf->rf_fc.fc_subtype == MAC_Subtype_uRTS)///the RTS packet is sent for control packet like
 		return CTS;		// NOTE: But actually, the control packets are broadcast, Would not send a RTS
 	bool RTSC = rf->rf_fc.fc_order;
 	bool me_congested = congested();
@@ -2210,7 +2204,7 @@ refuse_state Mac802_11::refuse( Packet* p )
 					return REFUSE;
 				}
 			}
-		} else { //RTS
+		} else { // recv RTS, but me congested. So, refuse it.
 			refuse_other_rts++;
 			return REFUSE;
 		}

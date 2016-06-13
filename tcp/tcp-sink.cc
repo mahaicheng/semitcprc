@@ -394,13 +394,13 @@ void TcpSink::ack(Packet* opkt)
         acker_->last_ack_sent_ = ntcp->seqno();
         // printf("ACK %d ts %f\n", ntcp->seqno(), ntcp->ts_echo());
 		
-	outgoingPkts.push_back(npkt);
+	/*outgoingPkts.push_back(npkt);
 	
 	if (backoff_timer_.status() == TIMER_IDLE)
-		setBackoffTimer();
+		setBackoffTimer();*/
 	
-	//send(npkt, 0);
 	// send it
+	send(npkt, 0);
 }
 void TcpSink::add_to_ack(Packet*)
 {

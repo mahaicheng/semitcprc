@@ -172,12 +172,12 @@ protected:
 	void incr_cw()
 	{
 		cw_ <<= 1;
-		if (cw_ > 1024)
-			cw_ = 1024;
+		if (cw_ < 0)
+			cw_ = (1 << 32) - 1;
 	}
 	void decr_cw()
 	{
-		cw_ -= 8;
+		cw_ <<= 1;
 		if (cw_ < 1)
 			cw_ = 1;
 	}

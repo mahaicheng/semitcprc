@@ -1,4 +1,4 @@
-//
+﻿//
 // rmst_filter.cc  : RmstFilter Class Methods
 // authors         : Fred Stann
 //
@@ -42,7 +42,7 @@
 
 #include "rmst_filter.hh"
 
-char *rmstmsg_types[] = {"INTEREST", "POSITIVE REINFORCEMENT",
+const char *rmstmsg_types[] = {"INTEREST", "POSITIVE REINFORCEMENT",
                      "NEGATIVE REINFORCEMENT", "DATA",
                      "EXPLORATORY DATA", "PUSH EXPLORATORY DATA",
                      "CONTROL", "REDIRECT"};

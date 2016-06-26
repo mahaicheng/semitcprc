@@ -1,4 +1,4 @@
-//
+﻿//
 // dr.cc           : Diffusion Routing Class
 // authors         : John Heidemann and Fabio Silva
 //
@@ -438,8 +438,8 @@ int DiffusionRouting::send(handle publication_handle,
   nr_algorithm = NRAlgorithmAttr.find(my_handle->attrs_);
   rmst_id_attr = RmstIdAttr.find(send_attrs);
 
-  if (!nr_algorithm && !rmst_id_attr || nr_algorithm &&
-      nr_algorithm->getVal() != NRAttribute::ONE_PHASE_PULL_ALGORITHM){
+  if ((!nr_algorithm && !rmst_id_attr) || (nr_algorithm &&
+      nr_algorithm->getVal() != NRAttribute::ONE_PHASE_PULL_ALGORITHM)){
 
     // In One-Phase Pull, there are no exploratory messages
     if (TimevalCmp(&current_time, &(my_handle->exploratory_time_)) >= 0){
@@ -503,7 +503,6 @@ int DiffusionRouting::sendRmst(handle publication_handle,
   void *frag_ptr, *blob_ptr;
   char *blob;
   timeval send_interval;
-  int retval;
   int id = GetRand() % 500;
   int size;
   int num_frag;
@@ -550,7 +549,6 @@ int DiffusionRouting::sendRmst(handle publication_handle,
     rmst_data_attr->setVal(frag_ptr, fragment_size);
 
   // Send 1st fragment
-  retval = send(publication_handle, send_attrs);
 
   // Send other fragments
   for (int i = 1; i <= num_frag; i++){
@@ -567,7 +565,6 @@ int DiffusionRouting::sendRmst(handle publication_handle,
       rmst_data_attr->setVal(frag_ptr, max_frag_len);
     else
       rmst_data_attr->setVal(frag_ptr, fragment_size);
-    retval = send(publication_handle, send_attrs);
   }
 
   ClearAttrs(send_attrs);

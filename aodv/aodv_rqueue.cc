@@ -198,12 +198,11 @@ aodv_rqueue::findPacketWithDst(nsaddr_t dst, Packet*& p, Packet*& prev) {
 
 void
 aodv_rqueue::verifyQueue() {
-Packet *p, *prev = 0;
+Packet *p;
 int cnt = 0;
 
  for(p = head_; p; p = p->next_) {
    cnt++;
-   prev = p;
  }
  assert(cnt == len_);
  assert(prev == tail_);

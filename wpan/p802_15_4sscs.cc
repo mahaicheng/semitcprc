@@ -1,4 +1,4 @@
-/********************************************/
+﻿/********************************************/
 /*     NS2 Simulator for IEEE 802.15.4      */
 /*           (per P802.15.4/D18)            */
 /*------------------------------------------*/
@@ -87,7 +87,7 @@ void SSCS802_15_4Timer::handle(Event* e)
 		sscs->startDevice(sscs->t_isCT,sscs->t_isFFD,sscs->t_assoPermit,sscs->t_txBeacon,sscs->t_BO,sscs->t_SO,true);
 }
 
-char *statusName(MACenum status)
+const char *statusName(MACenum status)
 {
 	switch(status)
 	{
@@ -294,6 +294,7 @@ void SSCS802_15_4::MLME_SCAN_confirm(MACenum status,UINT_8 ScanType,UINT_32 Unsc
 	if (ScanType == 0x01)
 		dispatch(status,"MLME_SCAN_confirm");
 	if (ScanType == 0x03)
+	{
 	if (status == m_SUCCESS)
 	{
 		fprintf(stdout,"[%f](node %d) coordinator relocation successful, begin to re-synchronize with the coordinator\n",CURRENT_TIME,mac->index_);
@@ -313,6 +314,7 @@ void SSCS802_15_4::MLME_SCAN_confirm(MACenum status,UINT_8 ScanType,UINT_32 Unsc
 			mac->MLME_SET_request(macCoordExtendedAddress,&t_mpib);
 			startDevice(t_isCT,t_isFFD,t_assoPermit,t_txBeacon,t_BO,t_SO,true);
 		}
+	}
 	}
 }
 
@@ -338,7 +340,7 @@ void SSCS802_15_4::MLME_POLL_confirm(MACenum status)
 
 //--------------------------------------------------------------------------
 
-char *sscsTaskName[] = {"NONE",
+const char *sscsTaskName[] = {"NONE",
 			"startPANCoord",
 			"startDevice"};
 void SSCS802_15_4::checkTaskOverflow(UINT_8 task)
@@ -352,7 +354,7 @@ void SSCS802_15_4::checkTaskOverflow(UINT_8 task)
 		sscsTaskP.taskStep(task) = 0;
 }
 
-void SSCS802_15_4::dispatch(MACenum status,char *frFunc)
+void SSCS802_15_4::dispatch(MACenum status,const char *frFunc)
 {
 	if (strcmp(frFunc,"MLME_SCAN_confirm") == 0)
 	{

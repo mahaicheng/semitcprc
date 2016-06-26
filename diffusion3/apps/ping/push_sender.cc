@@ -1,4 +1,4 @@
-//
+﻿//
 // push_sender.cc : Ping Server Main File
 // author         : Fabio Silva
 //
@@ -59,7 +59,6 @@ void PushSendDataTimer::expire(Event *e) {
 void PushSenderApp::send()
 {
   struct timeval tmv;
-  int retval;
 
   // Update time in the packet
   GetTime(&tmv);
@@ -68,7 +67,6 @@ void PushSenderApp::send()
 
   // Send data probe
   DiffPrint(DEBUG_ALWAYS, "Node%d: Sending Data %d\n", ((DiffusionRouting *)dr_)->getNodeId(), last_seq_sent_);
-  retval = dr_->send(pubHandle_, &data_attr_);
 
   // Update counter
   last_seq_sent_++;

@@ -1,4 +1,4 @@
-
+﻿
 /*
  * diffusion.cc
  * Copyright (C) 2000 by the University of Southern California
@@ -83,7 +83,7 @@
 
 void XmitFailedCallback(Packet *pkt, void *data);
 
-char *MsgStr[]= {"", "INTEREST", "DATA", "DATA_READY", "DATA_REQUEST",
+const char *MsgStr[]= {"", "INTEREST", "DATA", "DATA_READY", "DATA_REQUEST",
 		"POS_REINFORCE", "NEG_REINFORCE", "INHIBIT", "TX_FAILED",
 		"DATA_STOP" };
 
@@ -589,7 +589,6 @@ void DiffusionAgent::SendBufferCheck()
 {
   int c;
   hdr_cdiff *dfh;
-  hdr_cmn  *cmh;
   hdr_ip   *iph;
   int dtype;
   PrvCurPtr RetVal;
@@ -599,7 +598,6 @@ void DiffusionAgent::SendBufferCheck()
       continue;
     
     dfh = HDR_CDIFF(send_buf[c].p);
-    cmh = HDR_CMN(send_buf[c].p);
     iph = HDR_IP(send_buf[c].p);
     dtype = dfh->data_type;
 

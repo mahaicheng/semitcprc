@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 1997 Regents of the University of California.
  * All rights reserved.
@@ -65,10 +65,12 @@ void slist_base::remove(slink *a, slink *prev)
     if (last_ == NULL) 
 	return;
     if (prev == NULL)
-	if (last_->next_ == a)
-	    prev = last_;
-	else 
-	    return;
+	{
+		if (last_->next_ == a)
+			prev = last_;
+		else 
+			return;
+	}
 
     prev->next_ = a->next_;
     if (last_ == a)		// a was last in list

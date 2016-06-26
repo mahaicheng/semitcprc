@@ -2228,7 +2228,7 @@ DSRAgent::sendRouteShortening(SRPacket &p, int heard_at, int xmit_at)
   debug and trace output
 ------------------------------------------------------------*/
 void
-DSRAgent::trace(char* fmt, ...)
+DSRAgent::trace(const char* fmt, ...)
 {
   va_list ap;
   
@@ -2366,8 +2366,8 @@ DSRAgent::undeliverablePkt(Packet *pkt, int mine)
 
 		  for (int i = 0 ; i < srh->route_reply_len()-1; i++) {
 
-			  if (net_id == ID(srh->reply_addrs()[i]) &&
-			      to_id == ID(srh->reply_addrs()[i+1]) ||
+			  if ((net_id == ID(srh->reply_addrs()[i]) &&
+			      to_id == ID(srh->reply_addrs()[i+1])) ||
 			      (dsragent_require_bi_routes &&
 			       to_id == ID(srh->reply_addrs()[i]) &&
 			       net_id == ID(srh->reply_addrs()[i+1]))) {

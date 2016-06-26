@@ -192,8 +192,14 @@ MAC_MIB::MAC_MIB(Mac802_11 *parent)
    Mac Class Functions
    ====================================================================== */
 Mac802_11::Mac802_11() : 
-	Mac(), phymib_(this), macmib_(this), mhIF_(this), mhNav_(this), 
+	Mac(), 
+		maxAckQueueSize_(0),
 #ifdef SEMITCP
+	nb_congested(-1.0),
+	kk(0),
+	KK(2),
+	last_rts_frame(NULL),
+	round_trip_time(0.020),
 	CALLRT(1),
 	p_aodv_agent(0),
 	p_to_prique(0),
@@ -220,17 +226,13 @@ Mac802_11::Mac802_11() :
 	avg_whole(0.0),
 	max_whole(0),
 	
-	maxAckQueueSize_(0),
        
 /*******MHC DEBUG***********/
-	round_trip_time(0.020),
-	KK(2),
-	nb_congested(-1.0),
-	kk(0),
-	last_rts_frame(NULL),
+phymib_(this), macmib_(this),  
 	pktPre_(NULL),
 	nbtimer(this),
 #endif
+mhIF_(this), mhNav_(this),
 	mhRecv_(this), mhSend_(this), 
 	mhDefer_(this), mhBackoff_(this)
 {
@@ -337,7 +339,7 @@ printf(" RTS_refuse_rate:\t%.2f%%\n", RTS_refuse_rate * 100.0);
 printf("    RTS_CTS_rate:\t%.2f%%\n", RTS_CTS_rate * 100.0);
 printf("  DATA_fail_rate:\t%.2f%%\n", DATA_fail_rate * 100.0);
 printf("all_success_rate:\t%.2f%%\n\n", all_success_rate * 100.0);
-printf(" maxAckQueueSize:\t%d\n\n", maxAckQueueSize_);
+printf(" maxAckQueueSize:\t%ld\n\n", maxAckQueueSize_);
 
 	return TCL_OK;
     }   
@@ -407,7 +409,7 @@ void Mac802_11::trace_event(char *eventtype, Packet *p)
         //struct hdr_cmn *ch = HDR_CMN(p);
 	
 	if(wrk != 0) {
-		sprintf(wrk, "E -t "TIME_FORMAT" %s %2x ",
+		sprintf(wrk, "E -t " TIME_FORMAT " %s %2x ",
 			et_->round(Scheduler::instance().clock()),
                         eventtype,
                         //ETHER_ADDR(dh->dh_sa)
@@ -415,7 +417,7 @@ void Mac802_11::trace_event(char *eventtype, Packet *p)
                         );
         }
         if(nwrk != 0) {
-                sprintf(nwrk, "E -t "TIME_FORMAT" %s %2x ",
+                sprintf(nwrk, "E -t " TIME_FORMAT " %s %2x ",
                         et_->round(Scheduler::instance().clock()),
                         eventtype,
                         //ETHER_ADDR(dh->dh_sa)
@@ -703,7 +705,6 @@ Mac802_11::tx_resume()
 			}
 		}
 		if(call) {
-			double now = Scheduler::instance().clock();
 			Handler *h = callback_;     //callback_ is queue
 			callback_ = nullptr;
 			h->handle((Event*) 0); 	//从queue拉数据下来
@@ -1519,7 +1520,6 @@ Mac802_11::send(Packet *p, Handler *h)
 
 	if(pktRTS_ && !HDR_CMN(pktTx_)->control_packet()) {
 		Neighbour* nb = nbs[RECEIVER(pktTx_)];
-		const double now = Scheduler::instance().clock();
 		if(defer_rts(nb)) {	//推迟发送
 			assert(!nbtimer.busy());
 			assert(!pktPre_);
@@ -2081,9 +2081,7 @@ bool Mac802_11::congested()
 void Mac802_11::overHear( Packet* p )
 {
 	statistics();
-	hdr_cmn *ch = HDR_CMN ( p );
 	hdr_mac802_11 *mh = HDR_MAC802_11 ( p );
-	u_int32_t dst = ETHER_ADDR ( mh->dh_ra );
 	u_int8_t  type = mh->dh_fc.fc_type;
 	u_int8_t  subtype = mh->dh_fc.fc_subtype;
 	const double now = Scheduler::instance().clock();
@@ -2107,7 +2105,6 @@ void Mac802_11::overHear( Packet* p )
 		nbs[SENDER(p)] = new Neighbour (SENDER(p));
 	}
 	
-	Neighbour *nb = nbs[SENDER(p)];
 	if(type == MAC_Type_Data && subtype == MAC_Subtype_Data) {
 		if(nb_congested > 0.0)
 			kk++;   //kk 代表了邻居节点发送的数据包数
@@ -2147,7 +2144,6 @@ bool
 Mac802_11::defer_rts(Neighbour *nb)
 {
 	statistics();
-    const double helped_t = nb->get_helped_time();
     const double now = Scheduler::instance().clock();
 	
     if(congested())	//本节点拥塞了，不推迟发送RTS or RTSC
@@ -2168,7 +2164,7 @@ refuse_state Mac802_11::refuse( Packet* p )
 	bool queue_head_data_to_rts_sender = false;
 	
 	struct rts_frame *rf = (struct rts_frame*)p->access(hdr_mac::offset_);
-	u_int32_t rts_sender = SENDER(p);
+	int rts_sender = SENDER(p);
 	
 	if (rf->rf_fc.fc_subtype == MAC_Subtype_uRTS)///the RTS packet is sent for control packet like
 		return CTS;		// NOTE: But actually, the control packets are broadcast, Would not send a RTS
@@ -2177,7 +2173,7 @@ refuse_state Mac802_11::refuse( Packet* p )
 	
 	if(pkt) {   //have data packet to send
 		if(!HDR_CMN(pkt)->control_packet())
-			queue_head_data_to_rts_sender = (RECEIVER(pkt) == rts_sender);
+			queue_head_data_to_rts_sender = ((RECEIVER(pkt) == rts_sender));
 		else
 			queue_head_data_to_rts_sender = false;
 	} else { ///we don't count route queue here.--the route queue usually empty

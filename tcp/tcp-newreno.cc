@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 1990, 1997 Regents of the University of California.
  * All rights reserved.
@@ -284,6 +284,7 @@ void NewRenoTcpAgent::recv(Packet *pkt, Handler*)
 	 */
 
         if (valid_ack || aggressive_maxburst_)
+		{
 		if (dupacks_ == 0) 
 			/*
 			 * Maxburst is really only needed for the first
@@ -292,5 +293,6 @@ void NewRenoTcpAgent::recv(Packet *pkt, Handler*)
 			send_much(0, 0, maxburst_);
 		else if (dupacks_ > numdupacks_ - 1 && newreno_changes_ == 0)
 			send_much(0, 0, 2);
+		}
 }
 

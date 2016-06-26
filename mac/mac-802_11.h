@@ -288,7 +288,7 @@ public:
 	// Added by Sushmita to support event tracing
         void trace_event(char *, Packet *);
         EventTrace *et_;
-		int maxAckQueueSize_;
+		size_t maxAckQueueSize_;
 
 protected:
 	void	backoffHandler(void);
@@ -380,8 +380,7 @@ private:
 	
 	void overHear(Packet* p);   //the handler function to record the packet information needed
 	
-	Packet* pktPre_;    //it's the previous packet?
-	NBTimer nbtimer;
+
 	void store_tx();    
 	void restore_tx();
 
@@ -392,10 +391,11 @@ public:
 private:
 	void print_to_trace(Packet* p, char* function = NULL);
 
+	int CALLRT;     //发送多次RTS或者DATA失败后将数据包回退给路由层，路由层重新找路
+	
 	//double avg_length;
 	AODV* p_aodv_agent;
 	PriQueue* p_to_prique;
-	int CALLRT;     //发送多次RTS或者DATA失败后将数据包回退给路由层，路由层重新找路
 	
 /*******MHC DEBUG************/
  
@@ -416,7 +416,7 @@ private:
 	
 	int RTS_drop;
 	
-	int avg_whole;
+	double avg_whole;
 	int max_whole;
 	void statistics();
        
@@ -465,6 +465,8 @@ private:
 	/*
 	 * Mac Timers
 	 */
+	Packet* pktPre_;    //it's the previous packet?
+	NBTimer nbtimer;
 	IFTimer		mhIF_;		// interface timer
 	NavTimer	mhNav_;		// NAV timer
 	RxTimer		mhRecv_;		// incoming packets

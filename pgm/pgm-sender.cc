@@ -1,4 +1,4 @@
-
+﻿
 /*
  * pgm-sender.cc
  * Copyright (C) 2001 by the University of Southern California
@@ -186,7 +186,7 @@ protected:
 
   void display_packet(Packet *pkt); // For debugging.
 
-  void trace_event(char *evType, nsaddr_t daddr, double evTime); 
+  void trace_event(const char *evType, nsaddr_t daddr, double evTime); 
 
   EventTrace * et_; 	//Trace Object for custom Event Traces
 
@@ -332,14 +332,14 @@ int PgmSender::command(int argc, const char*const* argv)
   return (Agent::command(argc, argv));
 }
 
-void PgmSender::trace_event(char *evType, nsaddr_t daddr, double evTime) {
+void PgmSender::trace_event(const char *evType, nsaddr_t daddr, double evTime) {
 
   if (et_ == NULL) return;
   char *wrk = et_->buffer();
   char *nwrk = et_->nbuffer();
 
   if (wrk != NULL) {
-    sprintf(wrk, "E "TIME_FORMAT" %d %d PGM %s "TIME_FORMAT, 
+    sprintf(wrk, "E " TIME_FORMAT " %d %d PGM %s " TIME_FORMAT, 
             et_->round(Scheduler::instance().clock()),   
             addr(),                    
             daddr,                   
@@ -347,7 +347,7 @@ void PgmSender::trace_event(char *evType, nsaddr_t daddr, double evTime) {
 			evTime);	
   if (nwrk != 0)
     sprintf(nwrk,
-			"E -t "TIME_FORMAT" -o PGM -e %s -s %d.%d -d %d.%d",
+			"E -t " TIME_FORMAT " -o PGM -e %s -s %d.%d -d %d.%d",
 			et_->round(Scheduler::instance().clock()),   // time
 			evType,                    // event type
 			addr(),                       // owner (src) node id

@@ -1,4 +1,4 @@
-/********************************************/
+﻿/********************************************/
 /*     NS2 Simulator for IEEE 802.15.4      */
 /*           (per P802.15.4/D18)            */
 /*------------------------------------------*/
@@ -189,7 +189,7 @@ public:
 
 protected:
 	void checkTaskOverflow(UINT_8 task);
-	void dispatch(MACenum status,char *frFunc);
+	void dispatch(MACenum status,const char *frFunc);
 	void startPANCoord(bool isClusterTree,bool txBeacon,UINT_8 BO,UINT_8 SO,bool firsttime,MACenum status = m_SUCCESS);
 	void startDevice(bool isClusterTree,bool isFFD,bool assoPermit,bool txBeacon,UINT_8 BO,UINT_8 SO,bool firsttime,MACenum status = m_SUCCESS);
 	int command(int argc, const char*const* argv);

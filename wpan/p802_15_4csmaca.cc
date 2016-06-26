@@ -1,4 +1,4 @@
-/********************************************/
+﻿/********************************************/
 /*     NS2 Simulator for IEEE 802.15.4      */
 /*           (per P802.15.4/D18)            */
 /*------------------------------------------*/
@@ -499,7 +499,7 @@ void CsmaCA802_15_4::backoffHandler(void)
 
 void CsmaCA802_15_4::RX_ON_confirm(PHYenum status)
 {
-	double now,wtime;
+	double wtime;
 
 	if (status != p_RX_ON)
 	{
@@ -511,7 +511,6 @@ void CsmaCA802_15_4::RX_ON_confirm(PHYenum status)
 	}
 
 	//locate backoff boundary if needed
-	now = CURRENT_TIME;
 	if (beaconEnabled)
 		wtime = mac->locateBoundary(mac->toParent(txPkt),0.0);
 	else

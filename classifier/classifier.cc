@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 1996 Regents of the University of California.
  * All rights reserved.
@@ -81,6 +81,7 @@ void Classifier::alloc(int slot)
 	NsObject** old = slot_;
 	int n = nslot_;
 	if (old == 0) 
+	{
 		if (nsize_ != 0) {
 			//printf("classifier %x set to %d....%dth visit\n", this, nsize_, i++);
 			nslot_ = nsize_;
@@ -89,6 +90,7 @@ void Classifier::alloc(int slot)
 			//printf("classifier %x set to 32....%dth visit\n", this, j++);
 			nslot_ = 32;
 		}
+	}
 	while (nslot_ <= slot) 
 		nslot_ <<= 1;
 	slot_ = new NsObject*[nslot_];

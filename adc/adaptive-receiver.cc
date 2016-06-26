@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
  *
  * Copyright (c) Xerox Corporation 1997. All rights reserved.
  *
@@ -65,11 +65,8 @@ AdaptiveRcvr::AdaptiveRcvr() : Agent(PT_NTYPE)
 void AdaptiveRcvr::recv(Packet *pkt,Handler*)
 {
 	int delay;
-	int seq_no;
 	hdr_cmn* ch= hdr_cmn::access(pkt);
-	hdr_rtp *rh = hdr_rtp::access(pkt);
 	
-	seq_no= rh->seqno();
 	register u_int32_t send_time = (int)ch->timestamp();
 	
 	u_int32_t local_time= (u_int32_t)(Scheduler::instance().clock() * SAMPLERATE);

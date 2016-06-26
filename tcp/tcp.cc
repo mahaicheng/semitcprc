@@ -68,10 +68,10 @@ public:
 TcpAgent::TcpAgent() 
 	: Agent(PT_TCP), 
 	  t_seqno_(0), t_rtt_(0), t_srtt_(0), t_rttvar_(0), 
-	  wnd_(0.0), ///SEMIDEBUG
 	  t_backoff_(0), ts_peer_(0), ts_echo_(0),
 	  tss(NULL), tss_size_(100), 
 	  rtx_timer_(this), delsnd_timer_(this), burstsnd_timer_(this), 
+	  wnd_(0.0), ///SEMIDEBUG
 	  dupacks_(0), curseq_(0), highest_ack_(0), cwnd_(0), ssthresh_(0), 
 	  maxseq_(0), count_(0), rtt_active_(0), rtt_seq_(-1), rtt_ts_(0.0), 
 	  lastreset_(0.0), closed_(0), first_decrease_(1), fcnt_(0), 
@@ -2116,7 +2116,7 @@ void TcpAgent::process_qoption_after_ack (int seqno)
 	}
 }
 
-void TcpAgent::trace_event(char *eventtype)
+void TcpAgent::trace_event(const char *eventtype)
 {
 	if (et_ == NULL) return;
 	int seqno = t_seqno_;
@@ -2124,7 +2124,7 @@ void TcpAgent::trace_event(char *eventtype)
 	char *nwrk = et_->nbuffer();
 	if (wrk != 0)
 		sprintf(wrk,
-			"E "TIME_FORMAT" %d %d TCP %s %d %d %d",
+			"E " TIME_FORMAT " %d %d TCP %s %d %d %d",
 			et_->round(Scheduler::instance().clock()),   // time
 			addr(),                       // owner (src) node id
 			daddr(),                      // dst node id
@@ -2136,7 +2136,7 @@ void TcpAgent::trace_event(char *eventtype)
 	
 	if (nwrk != 0)
 		sprintf(nwrk,
-			"E -t "TIME_FORMAT" -o TCP -e %s -s %d.%d -d %d.%d",
+			"E -t " TIME_FORMAT " -o TCP -e %s -s %d.%d -d %d.%d",
 			et_->round(Scheduler::instance().clock()),   // time
 			eventtype,                    // event type
 			addr(),                       // owner (src) node id

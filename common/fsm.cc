@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 
 /*
  * Copyright (C) 1999 by the University of Southern California
@@ -122,7 +122,7 @@ FSMState::print_all(int level)
 	printf("#%-2d %*s %d:\n", print_i_, level * SPACES_PER_LEVEL + 1, " ", batch_size_);
 	int i;
 	for (i = 0; i <= batch_size_; i++) {
-		static char *delay_names[] = {"done", "error", "RTT", "timeout" };
+		static const char *delay_names[] = {"done", "error", "RTT", "timeout" };
 		assert(transition_[i] >= -1 && transition_[i] <= TIMEOUT);
 		printf("   %*s %d %s -> #%d\n", level * SPACES_PER_LEVEL + 3, " ",
 		       i,

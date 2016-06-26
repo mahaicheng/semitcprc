@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 
 /*
  * Copyright (c) Intel Corporation 2001. All rights reserved.
@@ -540,11 +540,11 @@ FullTcpAgent::prpkt(Packet *pkt)
 		tcph->reason());
 }
 
-char *
+const char *
 FullTcpAgent::flagstr(int hflags)
 {
 	// update this if tcp header flags change
-	static char *flagstrs[28] = {
+	static const char *flagstrs[28] = {
 		"<null>", "<FIN>", "<SYN>", "<SYN,FIN>",	// 0-3
 		"<?>", "<?,FIN>", "<?,SYN>", "<?,SYN,FIN>",	// 4-7
 		"<PSH>", "<PSH,FIN>", "<PSH,SYN>", "<PSH,SYN,FIN>", // 0x08-0x0b
@@ -572,10 +572,10 @@ FullTcpAgent::flagstr(int hflags)
 	return (flagstrs[hflags]);
 }
 
-char *
+const char *
 FullTcpAgent::statestr(int state)
 {
-	static char *statestrs[TCP_NSTATES] = {
+	static const char *statestrs[TCP_NSTATES] = {
 		"CLOSED", "LISTEN", "SYN_SENT", "SYN_RCVD",
 		"ESTABLISHED", "CLOSE_WAIT", "FIN_WAIT_1", "CLOSING",
 		"LAST_ACK", "FIN_WAIT_2"
@@ -2923,7 +2923,7 @@ SackFullTcpAgent::process_sack(hdr_tcp* tcph)
 	int slen = tcph->sa_length(), i;
 	for (i = 0; i < slen; ++i) {
 		/* Added check for FIN   -M. Weigle 5/21/02 */
-		if ((tcph->flags() & TH_FIN == 0) && 
+		if (((tcph->flags() & TH_FIN) == 0) && 
 		    tcph->sa_left(i) >= tcph->sa_right(i)) {
 			fprintf(stderr,
 			    "%f: FullTcpAgent(%s) warning: received illegal SACK block [%d,%d]\n",

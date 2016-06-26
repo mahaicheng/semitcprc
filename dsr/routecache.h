@@ -1,4 +1,4 @@
-
+﻿
 /*
  * routecache.h
  * Copyright (C) 2000 by the University of Southern California
@@ -99,7 +99,7 @@ public:
   // the returned route
 
   virtual int command(int argc, const char*const* argv);
-  void trace(char* fmt, ...);
+  void trace(const char* fmt, ...);
 
   // *******************************************************
 

@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 
 /*
  * media-app.cc
@@ -737,7 +737,7 @@ AppData* QA::get_data(int& size, AppData*)
 	double slope, bufavail, bufneeded, totbufs1, totbufs2, 
 		optbufs1[MAX_LAYER], optbufs2[MAX_LAYER], bufToDrain;
   
-	static double last_rate = 0.0, last_depart, nextAdjPoint = -1,
+	static double last_rate = 0.0, nextAdjPoint = -1,
 		FinalDrainArray[MAX_LAYER],
 		tosend[MAX_LAYER], FinalBuffer[MAX_LAYER];
 	
@@ -1200,7 +1200,6 @@ scen: %d, totbufs1: %.2f, totbufs2: %.2f, totbufavail: %.2f\n",
 			}
 		}
 		if (lowest<MWM(srtt)) {
-			last_depart = now;
 //       debug("A':sending layer %d, below MWM in Drain t: %.2f\n",
 // 	    lowix, now);
 			return output(size, lowix);
@@ -1817,7 +1816,7 @@ void QA::DumpInfo(double t, double last_t, double rate,
 #define MAXLEN 2000
 	int i,j;
 	char s1[MAXLEN], s2[MAXLEN], tmp[MAXLEN];
-	static double last_srtt = 0, t1,t2 = 0;
+	static double last_srtt = 0, t2 = 0;
 #undef MAXLEN
 
 	double  tot_bw = 0.0, interval, diff;
@@ -1844,7 +1843,6 @@ interval: %.4f, diff: %f t1: %f, t2: %f, last_t: %f, t: %f\n",
 		/* for the first call to init */
 		last_srtt = srtt;
 
-	t1 = last_t;
 	t2 = t;
 
 	if (interval <= 0.0) {

@@ -67,31 +67,79 @@ public:
 } class_semi;
 
 MaTcpAgent::MaTcpAgent() : 
+			p_to_mac(nullptr),
 			backoffTimer_(this),	
 			sendTimer_(this),
-			p_to_mac(nullptr),
 			congestedCount(0),
 			retryCount(0),
 			maxRetryCount(0),
 			notCongestedCount(0),
 			cw_(1),
-			timeslot_(0.000016)
+			timeslot_(0.000001)
 { 
 	
 }
 
-void MaTcpAgent::recv(Packet *p, Handler *h)
+void MaTcpAgent::recv(Packet *pkt, Handler *h)
 {
-	hdr_tcp *tcph = hdr_tcp::access(p);
+	hdr_tcp *tcph = hdr_tcp::access(pkt);
 	
-	if (tcph->seqno() == highest_ack_) 	//dupack ack packet
-		backoffTimer_.force_cancel();
-	else if (tcph->seqno() > highest_ack_ && backoffTimer_.status() == TIMER_IDLE)
-	{
-		setBackoffTimer();
+	//int valid_ack = 0;
+	if (qs_approved_ == 1 && tcph->seqno() > last_ack_) 
+		endQuickStart();
+	if (qs_requested_ == 1)
+		processQuickStart(pkt);
+#ifdef notdef
+	if (pkt->type_ != PT_ACK) {
+		Tcl::instance().evalf("%s error \"received non-ack\"",
+				      name());
+		Packet::free(pkt);
+		return;
 	}
-	
-	TcpAgent::recv(p, h);
+#endif
+	/* W.N.: check if this is from a previous incarnation */
+	if (tcph->ts() < lastreset_) {
+		// Remove packet and do nothing
+		Packet::free(pkt);
+		return;
+	}
+	++nackpack_;
+	ts_peer_ = tcph->ts();
+	int ecnecho = hdr_flags::access(pkt)->ecnecho();
+	if (ecnecho && ecn_)
+		ecn(tcph->seqno());
+	recv_helper(pkt);
+	recv_frto_helper(pkt);
+	/* grow cwnd and check if the connection is done */ 
+	if (tcph->seqno() > last_ack_) {
+		recv_newack_helper(pkt);
+		if (last_ack_ == 0 && delay_growth_) { 
+			cwnd_ = initial_window();
+		}
+	} else if (tcph->seqno() == last_ack_) {
+                if (hdr_flags::access(pkt)->eln_ && eln_) {
+                        tcp_eln(pkt);
+                        return;
+                }
+		if (++dupacks_ == numdupacks_ && !noFastRetrans_) {
+			dupack_action();
+		} else if (dupacks_ < numdupacks_ && singledup_ ) {
+			send_one();
+		}
+	}
+
+	if (QOption_ && EnblRTTCtr_)
+		process_qoption_after_ack (tcph->seqno());
+
+	//if (tcph->seqno() >= last_ack_)  
+		// Check if ACK is valid.  Suggestion by Mark Allman. 
+		//valid_ack = 1;
+	Packet::free(pkt);
+	/*
+	 * Try to send more data.
+	 */
+	/*if (valid_ack || aggressive_maxburst_)
+		send_much(0, 0, maxburst_);*/
 }
 
 void MaTcpAgent::send_much(int force, int reason, int maxburst)
@@ -111,8 +159,8 @@ void MaTcpAgent::send_much(int force, int reason, int maxburst)
 			t_seqno_ ++ ;
 	}
 	
-	if (backoffTimer_.status() == TIMER_IDLE)
-		setBackoffTimer();
+	if (sendTimer_.status() == TIMER_IDLE)
+		setSendTimer();
 	
 	/* call helper function */
 	send_helper(maxburst);
@@ -120,7 +168,6 @@ void MaTcpAgent::send_much(int force, int reason, int maxburst)
 
 void MaTcpAgent::send_timeout()
 {
-	reset_cw();
 	setBackoffTimer();
 }
 
@@ -140,29 +187,11 @@ void MaTcpAgent::backoff_timeout()
 	{
 		retryCount = 0;
 		notCongestedCount++;
-		
-		/*if (!retransmitPkts.empty())
-		{
-			auto iter = lower_bound(retransmitPkts.begin(), retransmitPkts.end(), highest_ack_ + 1);
-			if (iter != retransmitPkts.end())
-			{
-				retransmitPkts.erase(retransmitPkts.begin(), iter);
-			}
-			
-			if (!retransmitPkts.empty())
-			{
-				output(*retransmitPkts.begin());
-				decr_cw();
-				setBackoffTimer();
-				return;
-			}
-		}*/
 
 		send_much(1, 0, 1);
 		
 		decr_cw();
-		setBackoffTimer();
-		//setSendTimer();
+		setSendTimer();
 	}
 }
 
@@ -242,10 +271,8 @@ void MaTcpAgent::timeout ( int tno )
 		   then we don't need to back off (verified by simulations). 
 		 */	
 		last_cwnd_action_ = CWND_ACTION_TIMEOUT;
-		//retransmitPkts.insert(highest_ack_ + 1);
 		output(highest_ack_ + 1);
-		backoffTimer_.force_cancel();
-	} 
+	}
 	else {
 		assert(0); 	// would not run to here
 		timeout_nonrtx(tno);
@@ -262,10 +289,7 @@ void MaTcpAgent::dupack_action()
 	if (ecn_ && last_cwnd_action_ == CWND_ACTION_ECN) {
 		last_cwnd_action_ = CWND_ACTION_DUPACK;
 		slowdown(CLOSE_CWND_ONE);
-		//retransmitPkts.insert(highest_ack_ + 1);
 		output(highest_ack_ + 1);
-		backoffTimer_.force_cancel();
-		//reset_rtx_timer(0,0);
 		return;
 	}
 
@@ -286,10 +310,7 @@ tahoe_action:
 		last_cwnd_action_ = CWND_ACTION_DUPACK;
 		slowdown(CLOSE_SSTHRESH_HALF|CLOSE_CWND_ONE);
 	}
-	//retransmitPkts.insert(highest_ack_ + 1);
 	output(highest_ack_ + 1);
-	backoffTimer_.force_cancel();
-	//reset_rtx_timer(0,0);
 	return;
 }
 

@@ -1,4 +1,4 @@
-/* -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 1999 Regents of the University of California.
  * All rights reserved.
@@ -67,7 +67,7 @@ public:
 } sat_trace_class;
 
 // XXX this should be moved from trace.cc to trace.h 
-char* srm_names_[] = {
+const char* srm_names_[] = {
 	SRM_NAMES
 };
 
@@ -279,8 +279,6 @@ void SatTrace::format(int tt, int s, int d, Packet* p)
 	}
 
 	if (show_sctphdr_ && t == PT_SCTP) {
-	   double timestamp;
-	   timestamp = Scheduler::instance().clock();
 	   
 	   for(unsigned int i = 0; i < sctph->NumChunks(); i++) {
 		   switch(sctph->SctpTrace()[i].eType) {

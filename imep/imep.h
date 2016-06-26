@@ -1,4 +1,4 @@
-/* -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 1997 Regents of the University of California.
  * All rights reserved.
@@ -242,7 +242,7 @@ class imepAgent : public Agent {
 
 	void imep_dump_header(Packet *p);
 public:
-	void trace(char* fmt, ...);
+	void trace(const char* fmt, ...);
 private:
 
 	void log_neighbor_list(void);

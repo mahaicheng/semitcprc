@@ -1,4 +1,4 @@
-
+﻿
 /*
  * nixvec.cc
  * Copyright (C) 2000 by the University of Southern California
@@ -247,7 +247,7 @@ Nixl_t NixVec::GetBitl( Nixl_t l)
   // Find a good starting point
   if ((l & 0xFFFF0000) == 0)
     {
-      if (l & 0xFFFFFF00 == 0)
+      if ((l & 0xFFFFFF00) == 0)
         {
           h = 7;
         }

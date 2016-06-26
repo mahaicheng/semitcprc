@@ -1,4 +1,4 @@
-// -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
+﻿// -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
 
 /*
  * mac-tdma.cc
@@ -393,8 +393,7 @@ void MacTdma::recvDATA(Packet *p){
 /* Send packet down to the physical layer. 
    Need to calculate a certain time slot for transmission. */
 void MacTdma::sendDown(Packet* p) {
-	u_int32_t dst, src, size;
-  
+ 
 	struct hdr_cmn* ch = HDR_CMN(p);
 	struct hdr_mac_tdma* dh = HDR_MAC_TDMA(p);
 
@@ -419,9 +418,6 @@ void MacTdma::sendDown(Packet* p) {
 	else
 		dh->dh_duration = 0;
 
-	dst = ETHER_ADDR(dh->dh_da);
-	src = ETHER_ADDR(dh->dh_sa);
-	size = ch->size();
 
 	/* buffer the packet to be sent. */
 	pktTx_ = p;
@@ -430,9 +426,7 @@ void MacTdma::sendDown(Packet* p) {
 /* Actually send the packet. */
 void MacTdma::send() 
 {
-	u_int32_t dst, src, size;
 	struct hdr_cmn* ch;
-	struct hdr_mac_tdma* dh;
 	double stime;
 
 	/* Check if there is any packet buffered. */
@@ -451,11 +445,7 @@ void MacTdma::send()
 	}
 
 	ch = HDR_CMN(pktTx_);
-	dh = HDR_MAC_TDMA(pktTx_);  
 
-	dst = ETHER_ADDR(dh->dh_da);
-	src = ETHER_ADDR(dh->dh_sa);
-	size = ch->size();
 	stime = TX_Time(pktTx_);
 	ch->txtime() = stime;
 	
@@ -569,8 +559,7 @@ void MacTdma::slotHandler(Event *e)
 
 void MacTdma::recvHandler(Event *e) 
 {
-	u_int32_t dst, src; 
-	int size;
+	u_int32_t dst; 
 	struct hdr_cmn *ch = HDR_CMN(pktRx_);
 	struct hdr_mac_tdma *dh = HDR_MAC_TDMA(pktRx_);
 
@@ -582,8 +571,6 @@ void MacTdma::recvHandler(Event *e)
   
 	/* check if this packet was unicast and not intended for me, drop it.*/   
 	dst = ETHER_ADDR(dh->dh_da);
-	src = ETHER_ADDR(dh->dh_sa);
-	size = ch->size();
 
 	//printf("<%d>, %f, recv a packet [from %d to %d], size = %d\n", index_, NOW, src, dst, size);
 

@@ -1,4 +1,4 @@
-/* -*- c++ -*-
+﻿/* -*- c++ -*-
    priqueue.cc
    
    A simple priority queue with a remove packet function
@@ -103,7 +103,7 @@ CMUPriQueue::log_stats()
 	   stat_recv_ > fw_logthresh_) {
 		if (prq_logtarget_->pt_->tagged()) {
 		   // using the new tagged trace format
-		   trace("I "TIME_FORMAT" -prq:adr %d -prq:rx %d -prq:tx %d -prq:bl %d -prq:snd0 {%d %d} -prq:snd1 {%d %d} -prq:snd2 {%d %d} -prq:snd3 {%d %d}",
+		   trace("I " TIME_FORMAT " -prq:adr %d -prq:rx %d -prq:tx %d -prq:bl %d -prq:snd0 {%d %d} -prq:snd1 {%d %d} -prq:snd2 {%d %d} -prq:snd3 {%d %d}",
 		      Scheduler::instance().clock(),
 		      prq_ipaddr_,
 		      stat_recv_, stat_send_, stat_blocked_,
@@ -130,7 +130,7 @@ CMUPriQueue::log_stats()
 }
 
 void
-CMUPriQueue::trace(char* fmt, ...)
+CMUPriQueue::trace(const char* fmt, ...)
 {
 	va_list ap;
   

@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
  *
  * Copyright (c) 1997 The Regents of the University of California.
  * All rights reserved.
@@ -166,8 +166,8 @@ Tagger::fformat(Flow* f)
 {
         double now = Scheduler::instance().clock();
         sprintf(wrk_, "%8.3f %d %d %d %d %d %d "
-		STRTOI64_FMTSTR" "STRTOI64_FMTSTR" %d %d "
-		STRTOI64_FMTSTR" "STRTOI64_FMTSTR" %d %d %d %d %d %d %d",
+		STRTOI64_FMTSTR " " STRTOI64_FMTSTR " %d %d "
+		STRTOI64_FMTSTR " " STRTOI64_FMTSTR " %d %d %d %d %d %d %d",
                 now,            // 1: time
                 f->flowid(),    // 2: flowid
                 0,              // 3: category

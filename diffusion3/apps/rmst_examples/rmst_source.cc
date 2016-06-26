@@ -1,4 +1,4 @@
-//
+﻿//
 // rmst_source.cc  : RmstSource Class Methods
 // authors         : Fred Stann
 //
@@ -261,15 +261,13 @@ char* RmstSource::createBlob (int ck_val)
 
 void RmstSource::sendBlob() {
   char *blob;
-  int retval;
   NRAttrVec src_attrs;
 
   // Retrieve rmsb from the local cache to get pointer to it.
   blob = createBlob(ck_val_);
   ck_val_++;
   src_attrs.push_back(RmstDataAttr.make(NRAttribute::IS, blob, 2500));
-  retval = ((DiffusionRouting *)dr_)->sendRmst(send_handle_,
-					       &src_attrs, PAYLOAD_SIZE);
+
   blobs_to_send_--;
   delete blob;
 }

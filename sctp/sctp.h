@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2001-2004 by the Protocol Engineering Lab, U of Delaware
  * All rights reserved.
  *
@@ -58,7 +58,7 @@
 #define RTO_BETA              0.25   // RTO.Beta is 1/4
 
 #define MAX_BURST             4
-typedef enum MaxBurstUsage_E
+enum MaxBurstUsage_E
 {
   MAX_BURST_USAGE_OFF,      // 0
   MAX_BURST_USAGE_ON        // 1
@@ -71,13 +71,13 @@ typedef enum MaxBurstUsage_E
  */
 #undef FALSE
 #undef TRUE
-typedef enum Boolean_E
+enum Boolean_E
 {
   FALSE,
   TRUE
 };
 
-typedef enum RtxToAlt_E
+enum RtxToAlt_E
 {
   RTX_TO_ALT_OFF,
   RTX_TO_ALT_ON,
@@ -87,7 +87,7 @@ typedef enum RtxToAlt_E
 /* What behavior is used during dormant state (ie, all destinations have
  * failed) when timeouts persist?
  */
-typedef enum DormantAction_E
+enum DormantAction_E
 {
   DORMANT_HOP,        // keep hopping to another destination
   DORMANT_PRIMARY,    // goto primary and stay there
@@ -97,7 +97,7 @@ typedef enum DormantAction_E
 /* Who controls the data sending, app layer or the transport layer 
  * (as in the case of infinite data)
  */
-typedef enum DataSource_E
+enum DataSource_E
 {
   DATA_SOURCE_APPLICATION,
   DATA_SOURCE_INFINITE
@@ -105,7 +105,7 @@ typedef enum DataSource_E
 
 /* SCTP chunk types 
  */
-typedef enum SctpChunkType_E
+enum SctpChunkType_E
 {
   SCTP_CHUNK_DATA,
   SCTP_CHUNK_INIT,
@@ -134,7 +134,7 @@ typedef enum SctpChunkType_E
   SCTP_CHUNK_TIMESTAMP
 };
 
-typedef struct AppData_S 
+struct AppData_S 
 {
   /* Parameters needed for establishing an association 
    */
@@ -153,7 +153,7 @@ typedef struct AppData_S
  * (This was done so that the 'trace' module wouldn't have to look into the
  * payload of SCTP packets)
  */
-typedef struct SctpTrace_S
+struct SctpTrace_S
 {
   SctpChunkType_E  eType;
   u_int            uiTsn;    // (cum ack for sacks, -1 for other control chunks)
@@ -183,7 +183,7 @@ struct hdr_sctp
   SctpTrace_S*& SctpTrace() { return spSctpTrace; }
 };
 
-typedef struct SctpChunkHdr_S
+struct SctpChunkHdr_S
 {
   u_char  ucType;
   u_char  ucFlags;
@@ -193,7 +193,7 @@ typedef struct SctpChunkHdr_S
 /* INIT paramater types
  */
 #define SCTP_INIT_PARAM_UNREL  0xC000
-typedef struct SctpUnrelStreamsParam_S
+struct SctpUnrelStreamsParam_S
 {
   u_short  usType;
   u_short  usLength;
@@ -202,13 +202,13 @@ typedef struct SctpUnrelStreamsParam_S
    */
 };
 
-typedef struct SctpUnrelStreamPair_S
+struct SctpUnrelStreamPair_S
 {
   u_short  usStart;
   u_short  usEnd;
 };
 
-typedef struct SctpInitChunk_S  // this is used for init ack, too 
+struct SctpInitChunk_S  // this is used for init ack, too 
 {
   SctpChunkHdr_S  sHdr;
   u_int           uiInitTag;		 // tag of mine (not used)
@@ -221,7 +221,7 @@ typedef struct SctpInitChunk_S  // this is used for init ack, too
 };
 typedef SctpInitChunk_S SctpInitAckChunk_S;
 
-typedef struct SctpCookieEchoChunk_S
+struct SctpCookieEchoChunk_S
 {
   SctpChunkHdr_S  sHdr;
 	
@@ -229,7 +229,7 @@ typedef struct SctpCookieEchoChunk_S
 };
 typedef SctpCookieEchoChunk_S SctpCookieAckChunk_S;
 
-typedef struct SctpDataChunkHdr_S
+struct SctpDataChunkHdr_S
 {
   SctpChunkHdr_S  sHdr;
   u_int           uiTsn;
@@ -249,7 +249,7 @@ typedef struct SctpDataChunkHdr_S
 /* SACK has the following structure and following it will be some number of
  * gap acks and duplicate tsns.
  */
-typedef struct SctpSackChunk_S
+struct SctpSackChunk_S
 {
   SctpChunkHdr_S  sHdr;
   u_int           uiCumAck;
@@ -261,27 +261,27 @@ typedef struct SctpSackChunk_S
    */
 };
 
-typedef struct SctpGapAckBlock_S
+struct SctpGapAckBlock_S
 {
   u_short  usStartOffset;
   u_short  usEndOffset;
 };
 
-typedef struct SctpDupTsn_S
+struct SctpDupTsn_S
 {
   u_int  uiTsn;
 };
 
 #define SCTP_CHUNK_FORWARD_TSN_LENGTH  8
-typedef struct SctpForwardTsnChunk_S
+struct SctpForwardTsnChunk_S
 {
   SctpChunkHdr_S  sHdr;
   u_int           uiNewCum;
 };
 
-typedef struct SctpDest_S;
+struct SctpDest_S;
 #define SCTP_CHUNK_HEARTBEAT_LENGTH  24
-typedef struct SctpHeartbeatChunk_S
+struct SctpHeartbeatChunk_S
 {
   SctpChunkHdr_S  sHdr;
   u_short         usInfoType;      // filled in, but not really used
@@ -292,7 +292,7 @@ typedef struct SctpHeartbeatChunk_S
 typedef SctpHeartbeatChunk_S SctpHeartbeatAckChunk_S;
 
 /* SCTP state defines for internal state machine */
-typedef enum SctpState_E
+enum SctpState_E
 {
   SCTP_STATE_UNINITIALIZED,
   SCTP_STATE_CLOSED,
@@ -416,7 +416,7 @@ protected:
   SctpDest_S *spDest;  // destination this timer corresponds to
 };
 
-typedef struct SctpInterface_S
+struct SctpInterface_S
 {
   int        iNsAddr;
   int        iNsPort;
@@ -424,13 +424,13 @@ typedef struct SctpInterface_S
   NsObject  *opLink;
 };
 
-typedef enum SctpDestStatus_E
+enum SctpDestStatus_E
 {
   SCTP_DEST_STATUS_INACTIVE,
   SCTP_DEST_STATUS_ACTIVE
 };
 
-typedef enum NodeType_E
+enum NodeType_E
 {
   NODE_TYPE_STREAM_BUFFER,
   NODE_TYPE_RECV_TSN_BLOCK,
@@ -442,7 +442,7 @@ typedef enum NodeType_E
   NODE_TYPE_PACKET_BUFFER
 };
 
-typedef struct Node_S
+struct Node_S
 {
   NodeType_E  eType;
   void       *vpData;   // u can put any data type into the node
@@ -450,15 +450,15 @@ typedef struct Node_S
   Node_S     *spPrev;
 };
 
-typedef struct List_S
+struct List_S
 {
   u_int    uiLength;
   Node_S  *spHead;
   Node_S  *spTail;
 };
 
-typedef struct SctpSendBufferNode_S;
-typedef struct SctpDest_S
+struct SctpSendBufferNode_S;
+struct SctpDest_S
 {
   int        iNsAddr;  // ns "IP address"
   int        iNsPort;  // ns "port"
@@ -509,7 +509,7 @@ typedef struct SctpDest_S
   List_S                 sBufferedPackets;
 };
 
-typedef struct SctpRecvTsnBlock_S
+struct SctpRecvTsnBlock_S
 {
   u_int  uiStartTsn;
   u_int  uiEndTsn;
@@ -520,20 +520,20 @@ typedef struct SctpRecvTsnBlock_S
  * one packet of retransmits may be sent. Later, the number of packets is gated
  * by cwnd
  */
-typedef enum SctpRtxLimit_E
+enum SctpRtxLimit_E
 {
   RTX_LIMIT_ONE_PACKET,
   RTX_LIMIT_CWND
 };
 
-typedef enum MarkedForRtx_E
+enum MarkedForRtx_E
 {
   NO_RTX,
   FAST_RTX,
   TIMEOUT_RTX
 };
 
-typedef struct SctpSendBufferNode_S
+struct SctpSendBufferNode_S
 {
   SctpDataChunkHdr_S  *spChunk;
   Boolean_E            eAdvancedAcked;     // acked via rtx expiration (u-sctp)
@@ -552,25 +552,25 @@ typedef struct SctpSendBufferNode_S
   u_int                uiFastRtxRecover;   // sctp-multipleFastRtxs.cc uses this
 };
 
-typedef struct SctpStreamBufferNode_S
+struct SctpStreamBufferNode_S
 {
   SctpDataChunkHdr_S  *spChunk;
 };
 
-typedef enum SctpStreamMode_E
+enum SctpStreamMode_E
 {
   SCTP_STREAM_RELIABLE,
   SCTP_STREAM_UNRELIABLE
 };
 
-typedef struct SctpInStream_S
+struct SctpInStream_S
 {
   SctpStreamMode_E  eMode;
   u_short           usNextStreamSeqNum;
   List_S            sBufferedChunkList;
 };
 
-typedef struct SctpOutStream_S
+struct SctpOutStream_S
 {
   SctpStreamMode_E  eMode;
   u_short           usNextStreamSeqNum;	

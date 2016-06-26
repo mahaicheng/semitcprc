@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 1996 The Regents of the University of California.
  * All rights reserved.
@@ -145,11 +145,10 @@ int ScoreBoard::UpdateScoreBoard (int last_ack, hdr_tcp* tcph)
 }
 int ScoreBoard::CheckSndNxt (hdr_tcp* tcph)
 {
-	int i, sack_index, sack_left, sack_right;
+	int i, sack_index, sack_right;
 	int force_timeout = 0;
 
 	for (sack_index=0; sack_index < tcph->sa_length(); sack_index++) {
-		sack_left = tcph->sa_left(sack_index);
 		sack_right = tcph->sa_right(sack_index);
 
 		for (i=SBN[(first_)%sbsize_].seq_no_; i<sack_right; i++) {

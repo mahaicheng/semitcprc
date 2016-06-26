@@ -1,4 +1,4 @@
-/* -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 1997 Regents of the University of California.
  * All rights reserved.
@@ -1008,7 +1008,7 @@ imepAgent::log_neighbor_list()
 }
 
 void
-imepAgent::trace(char* fmt, ...)
+imepAgent::trace(const char* fmt, ...)
 {
   va_list ap;
   

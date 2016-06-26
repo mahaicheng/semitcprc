@@ -1,4 +1,4 @@
-/* -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 2000  International Computer Science Institute
  * All rights reserved.
@@ -161,7 +161,7 @@ class PushbackEvent {
     next_=event;
   }
 
-  static char * type(PushbackEvent * event) {
+  static const char * type(PushbackEvent * event) {
     switch (event->eventID_) {
     case PUSHBACK_CHECK_EVENT: return "CHECK";
     case PUSHBACK_REFRESH_EVENT: return "REFRESH";

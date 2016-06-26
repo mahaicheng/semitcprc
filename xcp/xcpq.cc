@@ -219,11 +219,7 @@ void XCPQueue::do_before_packet_departure(Packet* p)
 
 	double inv = 1.0/xh->throughput_;
 	double pkt_size = double(hdr_cmn::access(p)->size());
-	double frac = 1.0;
-	if (spread_bytes_) {
-		// rtt-scaling
-		frac = (xh->rtt_ > Te_) ? Te_ / xh->rtt_ : xh->rtt_ / Te_;
-	}
+
 	/* L 20, 21 */
 	double pos_fbk = Cp_ * inv * pkt_size;
 	double neg_fbk = Cn_ * pkt_size;
@@ -436,7 +432,7 @@ void XCPQueue::everyRTT ()
 void  XCPQueue::drop(Packet* p)
 {
 	drops_++;
-	total_drops_ = total_drops_++;
+	total_drops_ += 1;
   
 	Connector::drop(p);
 }
@@ -499,7 +495,7 @@ void XCPTimer::expire(Event *) {
 }
 
 
-void XCPQueue::trace_var(char * var_name, double var)
+void XCPQueue::trace_var(const char * var_name, double var)
 {
 	char wrk[500];
 	double now = Scheduler::instance().clock();

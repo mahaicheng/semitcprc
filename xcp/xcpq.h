@@ -120,7 +120,7 @@ protected:
 	int min(int i1, int i2) { return (i1 < i2) ? i1 : i2; }
 	double abs(double d) { return (d < 0) ? -d : d; }
 
-	virtual void trace_var(char * var_name, double var);
+	virtual void trace_var(const char * var_name, double var);
   
 	// Estimation & Control Helpers
 	void init_vars();

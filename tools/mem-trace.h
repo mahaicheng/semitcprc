@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 
 /*
  * Copyright (C) 1998 by the University of Southern California
@@ -114,7 +114,7 @@ public:
 	MemTrace() {
 		start_.checkpoint();
 	}
-	void diff(char* prompt) {
+	void diff(const char* prompt) {
 		now_.checkpoint();
 		fprintf (stdout, "%s: utime/stime: %ld %ld \tstack/heap: %ld %ld\n",
 			 prompt, 

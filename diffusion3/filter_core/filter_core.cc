@@ -1,4 +1,4 @@
-// 
+﻿// 
 // filter_core.cc  : Main Diffusion program
 // authors         : Chalermek Intanagonwiwat and Fabio Silva
 //
@@ -950,10 +950,9 @@ DiffusionCoreAgent::DiffusionCoreAgent(int argc, char **argv)
   int opt;
   int debug_level;
 #endif // NS_DIFFUSION
-  DeviceList *in_devices, *out_devices, *local_out_devices;
+  DeviceList *out_devices, *local_out_devices;
   DiffusionIO *device;
   TimerCallback *callback;
-  char *node_id_env;
 #ifdef USE_EMSIM
   char *sim_id = getenv("SIM_ID");
   char *sim_group = getenv("SIM_GROUP");
@@ -975,7 +974,6 @@ DiffusionCoreAgent::DiffusionCoreAgent(int argc, char **argv)
   config_file_ = NULL;
   stop_time = 0;
 
-  node_id_env = getenv("node_addr");
   diffusion_port_ = DEFAULT_DIFFUSION_PORT;
 
 #ifndef NS_DIFFUSION
@@ -1194,7 +1192,6 @@ DiffusionCoreAgent::DiffusionCoreAgent(int argc, char **argv)
     local_out_devices = &(local_out_devices_);
   }
 #else
-  in_devices = &(in_devices_);
   out_devices = &(out_devices_);
   local_out_devices = &(local_out_devices_);
 #endif // IO_LOG

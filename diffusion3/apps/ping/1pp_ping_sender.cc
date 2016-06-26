@@ -1,4 +1,4 @@
-//
+﻿//
 // ping_sender.cc : Ping Server Main File
 // author         : Fabio Silva
 //
@@ -60,7 +60,6 @@ void OPPPingSendDataTimer::expire(Event *e) {
 void OPPPingSenderApp::send()
 {
   struct timeval tmv;
-  int retval;
 
   // Send data if we have active subscriptions
   if (num_subscriptions_ > 0){
@@ -71,7 +70,6 @@ void OPPPingSenderApp::send()
 
     // Send data probe
     DiffPrint(DEBUG_ALWAYS, "Node%d: Sending Data %d\n", ((DiffusionRouting *)dr_)->getNodeId(), last_seq_sent_);
-    retval = dr_->send(pubHandle_, &data_attr_);
 
     // Update counter
     last_seq_sent_++;

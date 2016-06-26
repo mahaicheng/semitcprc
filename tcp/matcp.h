@@ -92,23 +92,23 @@ protected:
 		{
 			backoffTimer_.resched((Random::random()%cw_ + 1)*timeslot_);
 		}
-		void incr_cw(){cw_ <<= 1; if (cw_ < 0) cw_ = (1 << 32) - 1;}
+		void incr_cw(){cw_ <<= 1; if (cw_ < 0) cw_ = (1 << 30) - 1;}
 		void decr_cw(){cw_ >>= 1; if(cw_ < 1) cw_ = 1;}
 		void reset_cw(){cw_ = 1;}
 		
 		void send_timeout();
 		void setSendTimer()
 		{
-			//      2*sifs + rts + cts + data + ack
-			double us = 16 + 256 + 256 + 2496 + 256;
-			sendTimer_.resched(us / 1000000);
+			//      3*sifs + rts + cts + data + ack
+			double data = 24 + 256 + 256 + 2496 + 256;
+			double ack	= 24 + 256 + 256 + 448  + 256;
+			sendTimer_.resched((data + ack) / 1000000);
 		}
 		
 private:
         Mac802_11* p_to_mac;
         TcpBackoffTimer backoffTimer_;
 		TcpSendTimer sendTimer_;
-		std::set<int> retransmitPkts;
 		
 		// debug
 		int congestedCount;

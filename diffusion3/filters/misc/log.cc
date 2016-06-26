@@ -1,4 +1,4 @@
-//
+﻿//
 // log.cc         : Log Filter
 // author         : Fabio Silva
 //
@@ -42,7 +42,7 @@
 
 #include "log.hh"
 
-char *msg_types[] = {"INTEREST", "POSITIVE REINFORCEMENT",
+const char *msg_types[] = {"INTEREST", "POSITIVE REINFORCEMENT",
 		     "NEGATIVE REINFORCEMENT", "DATA",
 		     "EXPLORATORY DATA", "PUSH EXPLORATORY DATA",
 		     "CONTROL", "REDIRECT"};

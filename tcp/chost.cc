@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 1997 Regents of the University of California.
  * All rights reserved.
@@ -319,7 +319,6 @@ CorresHost::rmv_old_segs(Packet *pkt, IntTcpAgent *sender, int amt_data_acked)
 {
 	Islist_iter<Segment> seg_iter(seglist_);
 	Segment *cur, *prev=0;
-	int found = 0;
 	int done = 0;
 	int new_data_acked = 0;
 	int partialack = 0;
@@ -345,7 +344,7 @@ CorresHost::rmv_old_segs(Packet *pkt, IntTcpAgent *sender, int amt_data_acked)
 			/* found packet acked */
 			if (tcph->seqno() == cur->seqno_ && 
 			    tcph->ts_echo() == cur->ts_) 
-				found = 1;
+			{
 			/* higher ack => clean up acked packets */
 			if (tcph->seqno() >= cur->seqno_) {
 				adjust_ownd(cur->size_);
@@ -377,6 +376,7 @@ CorresHost::rmv_old_segs(Packet *pkt, IntTcpAgent *sender, int amt_data_acked)
 				if (new_data_acked >= amt_data_acked)
 					done = 1;
 				dontIncrCwnd_ = 1;
+			}
 			}
 			/* 
 			 * If no new data has been acked AND this segment has

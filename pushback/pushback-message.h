@@ -1,4 +1,4 @@
-#ifndef ns_pushback_message_h
+﻿#ifndef ns_pushback_message_h
 #define ns_pushback_message_h
 
 #define PUSHBACK_REQUEST_MSG     1 
@@ -26,7 +26,7 @@ class PushbackMessage {
     rlsID_=rlsID;
   }
 
-  static char * type(PushbackMessage * msg) {
+  static const char * type(PushbackMessage * msg) {
     switch (msg->msgID_) {
     case PUSHBACK_REQUEST_MSG: return "REQUEST";
     case PUSHBACK_REFRESH_MSG: return "REFRESH";

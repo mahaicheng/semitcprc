@@ -1,4 +1,4 @@
-
+﻿
 /*
  * mac-simple.cc
  * Copyright (C) 2003 by the University of Southern California
@@ -65,7 +65,7 @@ public:
 
 
 // Added by Sushmita to support event tracing (singal@nunki.usc.edu).
-void MacSimple::trace_event(char *eventtype, Packet *p)
+void MacSimple::trace_event(const char *eventtype, Packet *p)
 {
 	if (et_ == NULL) return;
 	char *wrk = et_->buffer();
@@ -79,7 +79,7 @@ void MacSimple::trace_event(char *eventtype, Packet *p)
 
 	if (wrk != 0) 
 	{
-		sprintf(wrk, "E -t "TIME_FORMAT" %s %s %s",
+		sprintf(wrk, "E -t " TIME_FORMAT " %s %s %s",
 			et_->round(Scheduler::instance().clock()),
 			eventtype,
 			src_nodeaddr,
@@ -87,7 +87,7 @@ void MacSimple::trace_event(char *eventtype, Packet *p)
 	}
 	if (nwrk != 0)
 	{
-		sprintf(nwrk, "E -t "TIME_FORMAT" %s %s %s",
+		sprintf(nwrk, "E -t " TIME_FORMAT " %s %s %s",
 		et_->round(Scheduler::instance().clock()),
 		eventtype,
 		src_nodeaddr,

@@ -902,7 +902,6 @@ if (ih->daddr() == index) { // If I am the original source
    */
   Packet *buf_pkt;
 #ifdef SEMITCP
-  bool flag = true;
   while((buf_pkt = rqueue.deque(rt->rt_dst))) {
     if(rt->rt_hops != INFINITY2) {
           assert (rt->rt_flags == RTF_UP);
@@ -910,7 +909,6 @@ if (ih->daddr() == index) { // If I am the original source
     // may drop packets. -SRD 5/23/99
       forward(rt, buf_pkt, delay);
       delay += ARP_DELAY;
-      flag = false;
     }
   }
   //if(flag)
@@ -1047,8 +1045,8 @@ struct hdr_ip *ih = HDR_IP(p);
   return;
  }
 
- if (ch->ptype() != PT_AODV && ch->direction() == hdr_cmn::UP 
-    &&	((u_int32_t)ih->daddr() == IP_BROADCAST)
+ if ((ch->ptype() != PT_AODV && ch->direction() == hdr_cmn::UP 
+    &&	((u_int32_t)ih->daddr() == IP_BROADCAST))
     || (ih->daddr() == here_.addr_)) {
 	dmux_->recv(p,0); 	//发送到端口分类器
 	return;

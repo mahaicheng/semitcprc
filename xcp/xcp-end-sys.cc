@@ -1,4 +1,4 @@
-// -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
+﻿// -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
 
 /*
  * Copyright (C) 2004 by the University of Southern California
@@ -433,7 +433,7 @@ void XcpAgent::rtt_init()
 	// End of XCP Changes
 }
 
-void XcpAgent::trace_var(char * var_name, double var)
+void XcpAgent::trace_var(const char * var_name, double var)
 {
 	char wrk[500];
 	if (channel_) {
@@ -546,7 +546,7 @@ void XcpSink::ack(Packet* opkt)
 	if ( (sf != 0 && sf->ect()) || of->ect() )
 		// Set EcnEcho bit.  
 		nf->ecnecho() = acker_->ecn_unacked();
-	if (!of->ect() && of->ecnecho() ||
+	if ((!of->ect() && of->ecnecho()) ||
 	    (sf != 0 && !sf->ect() && sf->ecnecho()) ) 
 		// This is the negotiation for ECN-capability.
 		// We are not checking for of->cong_action() also. 

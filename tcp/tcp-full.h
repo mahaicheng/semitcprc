@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 1997, 2001 The Regents of the University of California.
  * All rights reserved.
@@ -216,8 +216,8 @@ protected:
 	DelAckTimer delack_timer_;	// other timers in tcp.h
 	void cancel_timers();		// cancel all timers
 	void prpkt(Packet*);		// print packet (debugging helper)
-	char *flagstr(int);		// print header flags as symbols
-	char *statestr(int);		// print states as symbols
+	const char *flagstr(int);		// print header flags as symbols
+	const char *statestr(int);		// print states as symbols
 
 	/*
 	* the following are part of a tcpcb in "real" RFC793 TCP

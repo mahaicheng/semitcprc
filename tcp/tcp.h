@@ -487,7 +487,7 @@ protected:
 
         /* support for event-tracing */
         //EventTrace *et_;
-        void trace_event(char *eventtype);
+        void trace_event(const char *eventtype);
 
 	/* these function are now obsolete, see other above */
 	void closecwnd(int how);

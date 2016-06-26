@@ -271,7 +271,7 @@ private:
   // tell them this.
 
   void testinit();
-  void trace(char* fmt, ...);
+  void trace(const char* fmt, ...);
 
   friend void XmitFailureCallback(Packet *pkt, void *data);
   friend void XmitFlowFailureCallback(Packet *pkt, void *data);

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2001-2004 by the Protocol Engineering Lab, U of Delaware
  * All rights reserved.
  *
@@ -50,7 +50,7 @@
 #define SCTP_TIMESTAMP_FLAG_TS    0x01  // indicates a timestamp in the chunk
 #define SCTP_TIMESTAMP_FLAG_ECHO  0x02  // indicates a timestamp echo in chunk
 
-typedef struct SctpTimestampChunk_S
+struct SctpTimestampChunk_S
 {
   SctpChunkHdr_S  sHdr;
   float           fTimestamp;

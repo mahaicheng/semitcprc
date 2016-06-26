@@ -1,4 +1,4 @@
-#include <assert.h>
+﻿#include <assert.h>
 
 #include <rtqueue.h>
 #include <cmu-trace.h>
@@ -144,8 +144,6 @@ rtqueue::purge()
         Packet *p;
 
         while((p = head_) && HDR_CMN(p)->ts_ < CURRENT_TIME) {
-                Packet *temp;
-		temp = remove_head();     
                 assert(p == temp);     
                 drop(p, DROP_RTR_QTIMEOUT);
         }
@@ -171,12 +169,11 @@ rtqueue::findPacketWithDst(nsaddr_t dst, Packet*& p, Packet*& prev)
 void
 rtqueue::verifyQueue()
 {
-	Packet *p, *prev = 0;
+	Packet *p;
 	int cnt = 0;
 
 	for(p = head_; p; p = p->next_) {
 		cnt++;
-		prev = p;
 	}
 	assert(cnt == len_);
 	assert(prev == tail_);

@@ -1,4 +1,4 @@
-/********************************************/
+﻿/********************************************/
 /*     NS2 Simulator for IEEE 802.15.4      */
 /*           (per P802.15.4/D18)            */
 /*------------------------------------------*/
@@ -154,6 +154,7 @@ int Mac802_15_4Class::method(int ac, const char*const* av)
 	const char*const* argv = av + 2;
 
 	if (strcmp(argv[1], "wpanCmd") == 0)
+	{
 	if (argc == 3)   
 	{
 		if (strcmp(argv[2], "verbose") == 0)
@@ -230,8 +231,10 @@ int Mac802_15_4Class::method(int ac, const char*const* av)
 			return (TCL_OK);
 		}
 	}
+	}
 
 	if (strcmp(argv[1], "wpanNam") == 0)
+	{
 	if (strcmp(argv[2], "namStatus") == 0)
 	{
 		if (argc == 3)
@@ -376,6 +379,7 @@ int Mac802_15_4Class::method(int ac, const char*const* av)
 			Nam802_15_4::flowAttribute(attr->attribute,attr->color);
 		}
 		return (TCL_OK);
+	}
 	}
 
 
@@ -760,8 +764,8 @@ void Mac802_15_4::MLME_SET_request(MPIBAenum PIBAttribute,MAC_PIB *PIBAttributeV
 	{
 		case macAckWaitDuration:
 			phy->PLME_GET_request(phyCurrentChannel);	//value will be returned in tmp_ppib
-			if ((tmp_ppib.phyCurrentChannel <= 10)&&(PIBAttributeValue->macAckWaitDuration != 120)
-			 || (tmp_ppib.phyCurrentChannel > 10)&&(PIBAttributeValue->macAckWaitDuration != 54))
+			if (((tmp_ppib.phyCurrentChannel <= 10)&&(PIBAttributeValue->macAckWaitDuration != 120))
+			 || ((tmp_ppib.phyCurrentChannel > 10)&&(PIBAttributeValue->macAckWaitDuration != 54)))
 				t_status = m_INVALID_PARAMETER;
 			else
 				mpib.macAckWaitDuration = PIBAttributeValue->macAckWaitDuration;
@@ -777,8 +781,8 @@ void Mac802_15_4::MLME_SET_request(MPIBAenum PIBAttribute,MAC_PIB *PIBAttributeV
 			break;
 		case macBattLifeExtPeriods:
 			phy->PLME_GET_request(phyCurrentChannel);	//value will be returned in tmp_ppib
-			if ((tmp_ppib.phyCurrentChannel <= 10)&&(PIBAttributeValue->macBattLifeExtPeriods != 8)
-			 || (tmp_ppib.phyCurrentChannel > 10)&&(PIBAttributeValue->macBattLifeExtPeriods != 6))
+			if (((tmp_ppib.phyCurrentChannel <= 10)&&(PIBAttributeValue->macBattLifeExtPeriods != 8))
+			 || ((tmp_ppib.phyCurrentChannel > 10)&&(PIBAttributeValue->macBattLifeExtPeriods != 6)))
 				t_status = m_INVALID_PARAMETER;
 			else
 				mpib.macBattLifeExtPeriods = PIBAttributeValue->macBattLifeExtPeriods;
@@ -985,6 +989,7 @@ void Mac802_15_4::recv(Packet *p, Handler *h)
 		frmCtrl.FrmCtrl = wph->MHR_FrmCtrl;
 		frmCtrl.parse();
 		if (taskP.taskStatus(TP_mlme_scan_request))
+		{
 		if (taskP.mlme_scan_request_ScanType == 0x00)		//ED scan
 		{
 #ifdef DEBUG802_15_4
@@ -1012,7 +1017,7 @@ void Mac802_15_4::recv(Packet *p, Handler *h)
 			drop(p,"OPH");
 			return;
 		}
-
+		}
 		//drop the packet if corrupted
 		if (ch->error())
 		{
@@ -1150,6 +1155,7 @@ void Mac802_15_4::recv(Packet *p, Handler *h)
 		//send an acknowledgement if needed (no matter this is a duplicated packet or not)
 		if ((frmCtrl.frmType == defFrmCtrl_Type_Data)
 		  ||(frmCtrl.frmType == defFrmCtrl_Type_MacCmd))
+		{
 		if (frmCtrl.ackReq)	//acknowledgement required
 		{
 			//association request command will be ignored under following cases
@@ -1181,8 +1187,10 @@ void Mac802_15_4::recv(Packet *p, Handler *h)
 		}
 		else
 			resetTRX();
+		}
 
 		if (frmCtrl.frmType == defFrmCtrl_Type_MacCmd)
+		{
 		if ((rxCmd)||(txBcnCmd))
 		{
 #ifdef DEBUG802_15_4
@@ -1197,8 +1205,10 @@ void Mac802_15_4::recv(Packet *p, Handler *h)
 			drop(p,"BSY");
 			return;
 		}
+		}
 
 		if (frmCtrl.frmType == defFrmCtrl_Type_Data)
+		{
 		if (rxData)
 		{
 #ifdef DEBUG802_15_4
@@ -1206,6 +1216,7 @@ void Mac802_15_4::recv(Packet *p, Handler *h)
 #endif
 			drop(p,"BSY");
 			return;
+		}
 		}
 
 		//check duplication -- must be performed AFTER all drop's
@@ -1385,11 +1396,9 @@ void Mac802_15_4::recvBeacon(Packet *p)
 void Mac802_15_4::recvAck(Packet *p)
 {
 	hdr_lrwpan *wph;
-	hdr_cmn *ch;
 	FrameCtrl frmCtrl;
 
 	wph = HDR_LRWPAN(p);
-	ch = HDR_CMN(p);
 #ifdef DEBUG802_15_4
 	fprintf(stdout,"[%s::%s][%f](node %d) M_ACK received: from = %d, SN = %d, uid = %d, mac_uid = %ld\n",__FILE__,__FUNCTION__,CURRENT_TIME,index_,p802_15_4macSA(p),wph->MHR_BDSN,ch->uid(),wph->uid);
 #endif
@@ -1693,15 +1702,11 @@ void Mac802_15_4::txHandler(void)
 	assert(txBcnCmd||txBcnCmd2||txData);
 
 	Packet *p;
-	hdr_lrwpan* wph;
-	hdr_cmn* ch;
 	UINT_8 t_numRetry;
 
 	if (txBcnCmd) p = txBcnCmd;
 	else if (txBcnCmd2) p = txBcnCmd2;
 	else p = txData;
-	wph = HDR_LRWPAN(p);
-	ch = HDR_CMN(p);
 
 	if (txBcnCmd) t_numRetry = numBcnCmdRetry;
 	else if (txBcnCmd2) t_numRetry = numBcnCmdRetry2;
@@ -1757,6 +1762,7 @@ void Mac802_15_4::beaconTxHandler(bool forTX)
 
 	if ((mpib.macBeaconOrder != 15)		//beacon enabled
 	|| (oneMoreBeacon))
+	{
 	if (forTX)
 	{
 		if (capability.FFD/*&&(numberDeviceLink(&deviceLink1) > 0)*/)
@@ -1900,6 +1906,7 @@ void Mac802_15_4::beaconTxHandler(bool forTX)
 		else
 			assert(0);
 	}
+	}
 	bcnTxT->start();	//don't disable this even beacon not enabled (beacon may be temporarily disabled like in channel scan, but it will be enabled again)
 }
 
@@ -1975,7 +1982,7 @@ void Mac802_15_4::set_trx_state_request(PHYenum state,const char *frFile,const c
 	phy->PLME_SET_TRX_STATE_request(state);
 }
 
-char *taskName[] = {"NONE",
+const char *taskName[] = {"NONE",
 		    "MCPS-DATA.request",
 		    "MLME-ASSOCIATE.request",
 		    "MLME-ASSOCIATE.response",
@@ -2301,6 +2308,7 @@ void Mac802_15_4::dispatch(PHYenum status,const char *frFunc,PHYenum req_state,M
 		 	 	return;
 
 			if (taskP.taskStatus(TP_mcps_data_request))
+			{
 			if (taskP.mcps_data_request_TxOptions & TxOp_GTS)		//GTS transmission
 			{
 				;	//TBD
@@ -2341,6 +2349,7 @@ void Mac802_15_4::dispatch(PHYenum status,const char *frFunc,PHYenum req_state,M
 			}
 			else		//direct transmission: in this case, let mcps_data_request() take care of everything
 				mcps_data_request(0,0,0,0,0,0,0,0,0,taskP.mcps_data_request_TxOptions,false,p_BUSY);	//status can be anything but p_SUCCESS
+			}
 		}
 		else if (txPkt == txBcnCmd2)
 		{
@@ -2425,17 +2434,21 @@ void Mac802_15_4::dispatch(PHYenum status,const char *frFunc,PHYenum req_state,M
 	{
 		//handle TRX_OFF
 		if (req_state == p_TRX_OFF)
+		{
 		if (taskP.taskStatus(TP_mlme_reset_request)
 	 	&& (strcmp(taskP.taskFrFunc(TP_mlme_reset_request),frFunc) == 0))
 			mlme_reset_request(taskP.mlme_reset_request_SetDefaultPIB,false,status);
+		}
 		//handle RX_ON
 		if (req_state == p_RX_ON)
+		{
 		if (taskP.taskStatus(TP_mlme_scan_request)
 	 	&& (strcmp(taskP.taskFrFunc(TP_mlme_scan_request),frFunc) == 0))
 			mlme_scan_request(taskP.mlme_scan_request_ScanType,taskP.mlme_scan_request_ScanChannels,taskP.mlme_scan_request_ScanDuration,false,status);
 		else if (taskP.taskStatus(TP_mlme_rx_enable_request)
 	 	&& (strcmp(taskP.taskFrFunc(TP_mlme_rx_enable_request),frFunc) == 0))
 			mlme_rx_enable_request(0,taskP.mlme_rx_enable_request_RxOnTime,taskP.mlme_rx_enable_request_RxOnDuration,false);
+		}
 	}
 	else if (strcmp(frFunc,"PLME_SET_confirm") == 0)
 	{
@@ -3706,7 +3719,7 @@ void Mac802_15_4::mlme_scan_request(UINT_8 ScanType,UINT_32 ScanChannels,UINT_8 
 				if ((taskP.mlme_scan_request_PANDescriptorList[i].LogicalChannel == taskP.mlme_scan_request_CurrentChannel)
 				&& (taskP.mlme_scan_request_PANDescriptorList[i].CoordAddrMode == frmCtrl.srcAddrMode)
 				&& (taskP.mlme_scan_request_PANDescriptorList[i].CoordPANId == wph->MHR_SrcAddrInfo.panID)		//but (page 146, line 4-5) implies not checking PAN ID
-				&& (((frmCtrl.srcAddrMode == defFrmCtrl_AddrMode16)&&(taskP.mlme_scan_request_PANDescriptorList[i].CoordAddress_16 == (wph->MHR_SrcAddrInfo.addr_16))
+				&& ((((frmCtrl.srcAddrMode == defFrmCtrl_AddrMode16)&&(taskP.mlme_scan_request_PANDescriptorList[i].CoordAddress_16 == (wph->MHR_SrcAddrInfo.addr_16)))
 				||((frmCtrl.srcAddrMode == defFrmCtrl_AddrMode64)&&(taskP.mlme_scan_request_PANDescriptorList[i].CoordAddress_64 == wph->MHR_SrcAddrInfo.addr_64)))))
 				 	break;
 				if (i >= taskP.mlme_scan_request_ListNum)	//unique beacon
@@ -4329,6 +4342,7 @@ void Mac802_15_4::csmacaResume(void)
 
 	if ((backoffStatus != 99)			//not during backoff
 	&&  (!inTransmission))				//not during transmission
+	{
 	if ((txBcnCmd)&&(!waitBcnCmdAck))
 	{
 		backoffStatus = 99;
@@ -4354,6 +4368,7 @@ void Mac802_15_4::csmacaResume(void)
 		frmCtrl.parse();
 		txCsmaca = txData;
 		csmaca->start(true,txData,frmCtrl.ackReq);
+	}
 	}
 }
 
@@ -4383,7 +4398,7 @@ int Mac802_15_4::getBattLifeExtSlotNum(void)
 
 double Mac802_15_4::getCAP(bool small)
 {
-	double bcnTxTime,bcnRxTime,bcnOtherRxTime,bPeriod;
+	double bcnTxTime,bcnRxTime,bcnOtherRxTime;
 	double sSlotDuration,sSlotDuration2,sSlotDuration3,BI2,BI3,t_CAP,t_CAP2,t_CAP3;
 	double now,oneDay,tmpf;
 	
@@ -4397,7 +4412,6 @@ double Mac802_15_4::getCAP(bool small)
 	bcnTxTime = macBcnTxTime / phy->getRate('s');
 	bcnRxTime = macBcnRxTime / phy->getRate('s');
 	bcnOtherRxTime = macBcnOtherRxTime / phy->getRate('s');
-	bPeriod = aUnitBackoffPeriod / phy->getRate('s');
 	sSlotDuration = sfSpec.sd / phy->getRate('s');
 	sSlotDuration2 = sfSpec2.sd / phy->getRate('s');
 	sSlotDuration3 = sfSpec3.sd / phy->getRate('s');
@@ -4516,7 +4530,7 @@ double Mac802_15_4::getCAP(bool small)
 
 double Mac802_15_4::getCAPbyType(int type)
 {
-	double bcnTxTime,bcnRxTime,bcnOtherRxTime,bPeriod;
+	double bcnTxTime,bcnRxTime,bcnOtherRxTime;
 	double sSlotDuration,sSlotDuration2,sSlotDuration3,BI2,BI3,t_CAP,t_CAP2,t_CAP3;
 	double now,oneDay,tmpf;
 	
@@ -4530,7 +4544,6 @@ double Mac802_15_4::getCAPbyType(int type)
 	bcnTxTime = macBcnTxTime / phy->getRate('s');
 	bcnRxTime = macBcnRxTime / phy->getRate('s');
 	bcnOtherRxTime = macBcnOtherRxTime / phy->getRate('s');
-	bPeriod = aUnitBackoffPeriod / phy->getRate('s');
 	sSlotDuration = sfSpec.sd / phy->getRate('s');
 	sSlotDuration2 = sfSpec2.sd / phy->getRate('s');
 	sSlotDuration3 = sfSpec3.sd / phy->getRate('s');
@@ -4538,6 +4551,7 @@ double Mac802_15_4::getCAPbyType(int type)
 	BI3 = (sfSpec3.BI / phy->getRate('s'));
 
 	if (type == 1)
+	{
 	if (mpib.macBeaconOrder != 15)
 	{
 		if (sfSpec.BLE)
@@ -4564,8 +4578,10 @@ double Mac802_15_4::getCAPbyType(int type)
 	}
 	else
 		return oneDay;
+	}
 
 	if (type == 2)
+	{
 	if (macBeaconOrder2 != 15)
 	{
 		if (sfSpec2.BLE)
@@ -4600,8 +4616,10 @@ double Mac802_15_4::getCAPbyType(int type)
 	}
 	else
 		return oneDay;
+	}
 	
 	if (type == 3)
+	{
 	if (macBeaconOrder3 != 15)
 	{
 		//no need to handle option <macBattLifeExt> here
@@ -4624,6 +4642,7 @@ double Mac802_15_4::getCAPbyType(int type)
 	}
 	else
 		return oneDay;
+	}
 
 	return oneDay;
 }
@@ -5319,7 +5338,7 @@ void Mac802_15_4::IFSHandler(void)
 	hdr_cmn* ch;
 	FrameCtrl frmCtrl;
 	Packet *pendPkt;
-	MACenum status;
+	MACenum status(m_UNDEFINED);
 	int i;
 
 	assert(rxData||rxCmd);

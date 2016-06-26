@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) Xerox Corporation 1997. All rights reserved.
  *
@@ -94,8 +94,7 @@ void TBF::recv(Packet *p, Handler *)
 		return;
 	}
 
-	double tok;
-	tok = getupdatedtokens();
+
 
 	int pktsize = ch->size()<<3;
 	if (tokens_ >=pktsize) {
@@ -133,8 +132,7 @@ void TBF::timeout(int)
 	}
 	
 	Packet *p=q_->deque();
-	double tok;
-	tok = getupdatedtokens();
+
 	hdr_cmn *ch=hdr_cmn::access(p);
 	int pktsize = ch->size()<<3;
 

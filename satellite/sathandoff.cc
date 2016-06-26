@@ -1,4 +1,4 @@
-/* -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 1999 Regents of the University of California.
  * All rights reserved.
@@ -134,7 +134,6 @@ SatLinkHead* LinkHandoffMgr::get_peer_linkhead(SatLinkHead* slhp)
 {
 	SatChannel *schan_;
 	Phy *remote_phy_;
-	Node *remote_node_;
 
 	schan_ = (SatChannel*) slhp->phy_tx()->channel();
 	if (schan_ == 0) {
@@ -148,7 +147,6 @@ SatLinkHead* LinkHandoffMgr::get_peer_linkhead(SatLinkHead* slhp)
 		printf("connected to channel with no receivers\n");
 		return 0;
 	}
-	remote_node_ = remote_phy_->head()->node();
 	if (remote_phy_->nextchnl()) {
 		printf("Error:  This ISL channel has more than one target\n");
 		return 0;

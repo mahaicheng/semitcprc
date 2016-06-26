@@ -1,4 +1,4 @@
-// -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
+﻿// -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
 
 /*
  * classifier-addr-mpls.cc
@@ -525,15 +525,13 @@ int MPLSAddressClassifier::command(int argc, const char*const* argv)
 				tcl.result("-1");
 			return (TCL_OK);
 		}
-		int PFTnb = -1;
 		int LIBptr = -1;
 		int iLabel, oLabel, iIface, oIface;
 		int fec   = atoi(argv[2]);
 		int LSPid = atoi(argv[3]);
-		int PHB   = LSPid;
 		if (LSPid < 0)     // topology-based LSP
-			PFTnb = PFTlocate(fec,PHB, LIBptr);
-		else               // ER-LSP
+			;
+			else               // ER-LSP
 			ERBlocate(LSPid,fec, LIBptr);
 
 		if (strcmp(argv[1], "GetInIface") == 0) {
@@ -1115,8 +1113,8 @@ int MPLSAddressClassifier::aPathLookup(int FEC,int PHB, int &oIface,
 	return -1;
 }
 
-void MPLSAddressClassifier::trace(char *ptype, int psize, int ilabel, 
-				  char *op, int oiface, int olabel, int ttl)
+void MPLSAddressClassifier::trace(const char *ptype, int psize, int ilabel, 
+				  const char *op, int oiface, int olabel, int ttl)
 {
 	if (trace_mpls_ != 1)
 		return;

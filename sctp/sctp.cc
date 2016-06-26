@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2001-2004 by the Protocol Engineering Lab, U of Delaware
  * All rights reserved.
  *
@@ -4737,7 +4737,7 @@ void SctpAgent::sendmsg(int iNumBytes, const char *cpFlags)
 	{
 	  fprintf(stderr, "SCTP ERROR: message size (%d) too big\n",
 		  spAppData->uiNumBytes);
-	  fprintf(stderr, "%s data chunk size (%d) > max (%d)\n",
+	  fprintf(stderr, "%s data chunk size (%lu) > max (%u)\n",
 		  "SCTP ERROR:",
 		  spAppData->uiNumBytes + sizeof(SctpDataChunkHdr_S), 
 		  MAX_DATA_CHUNK_SIZE);
@@ -4756,7 +4756,7 @@ void SctpAgent::sendmsg(int iNumBytes, const char *cpFlags)
 	  fprintf(stderr, "SCTP ERROR: message size (%d) too big\n",
 		  spAppData->uiNumBytes);
 	  fprintf(stderr, 
-		  "%s data chunk size (%d) + SCTP/IP header(%d) > MTU (%d)\n",
+		  "%s data chunk size (%lu) + SCTP/IP header(%u) > MTU (%u)\n",
 		  "SCTP ERROR:",
 		  spAppData->uiNumBytes + sizeof(SctpDataChunkHdr_S),
 		  SCTP_HDR_SIZE + uiIpHeaderSize, uiMtu);

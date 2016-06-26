@@ -1,4 +1,4 @@
-//
+﻿//
 // gear.cc        : GEAR Filter
 // authors        : Yan Yu and Fabio Silva
 //
@@ -1155,7 +1155,7 @@ int32_t GeoRoutingFilter::findNextHop(GeoHeader *geo_header, bool greedy)
   NeighborEntry *neighbor_entry;
   GeoLocation destination, min_neighbor_location;
   double current_learned_cost, min_learned_cost;
-  double current_distance, min_distance;
+  double current_distance;
   double distance, gap;
   int32_t min_cost_id, neighbor_id;
   int num_neighbors;
@@ -1167,7 +1167,6 @@ int32_t GeoRoutingFilter::findNextHop(GeoHeader *geo_header, bool greedy)
   current_distance = Distance(geo_longitude_, geo_latitude_,
 			      destination.longitude_, destination.latitude_);
 
-  min_distance = MAX_INT;
   min_learned_cost = MAX_INT;
   num_neighbors = 0;
 

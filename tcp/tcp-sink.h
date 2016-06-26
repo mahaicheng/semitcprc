@@ -162,18 +162,19 @@ protected:
 	double lastreset_; 	/* W.N. used for detecting packets  */
 				/* from previous incarnations */
 				
-	Mac802_11 *p_to_mac;
 	std::deque<Packet*> outgoingPkts;
 	TcpSinkBackoffTimer backoff_timer_;
 	TcpSinkSendTimer send_timer_;
 	
 	double timeslot_;
 	int cw_;
+	Mac802_11 *p_to_mac;
+
 	void incr_cw()
 	{
 		cw_ <<= 1;
 		if (cw_ < 0)
-			cw_ = (1 << 32) - 1;
+			cw_ = (1 << 30) - 1;
 	}
 	void decr_cw()
 	{

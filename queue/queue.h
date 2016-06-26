@@ -48,8 +48,8 @@ class Packet;
 class PacketQueue : public TclObject {
 public:
 #ifdef SEMITCP
-	PacketQueue() : head_(0), tail_(0), len_(0), bytes_(0),\
-					p_to_aodv(0){}
+	PacketQueue() : p_to_aodv(0), head_(0), tail_(0), len_(0), bytes_(0)
+					{}
 #else
 	PacketQueue() : head_(0), tail_(0), len_(0), bytes_(0) {}
 #endif

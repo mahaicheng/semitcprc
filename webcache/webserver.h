@@ -1,4 +1,4 @@
-
+﻿
 /*
  * webserver.h
  * Copyright (C) 1999 by the University of Southern California
@@ -57,6 +57,7 @@
 
 #include "webtraf.h"
 
+#undef NO_DELAY
 #define NO_DELAY 0
 #define FCFS_DELAY 1
 #define STF_DELAY 2

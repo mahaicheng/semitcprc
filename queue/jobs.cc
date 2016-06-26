@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2000-2002, by the Rector and Board of Visitors of the 
  * University of Virginia.
  * All rights reserved.
@@ -561,9 +561,7 @@ double* JoBS::adjustRatesRDC() {
 	double* result;
 	double credit, available, lower_bound, upper_bound;
 	double bk;
-	double cur_time;
 	
-	cur_time = Scheduler::instance().clock(); 
   
 	activeClasses = 0;
 	RDC_Classes = 0;

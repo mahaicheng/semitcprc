@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2000 Nortel Networks
  * All rights reserved.
  * 
@@ -330,10 +330,8 @@ int PolicyClassifier::mark(Packet *pkt) {
   int policy_index;
   int codePt;
   hdr_ip* iph;
-  int fid;
   
   iph = hdr_ip::access(pkt);
-  fid = iph->flowid();
   policy = getPolicyTableEntry(iph->saddr(), iph->daddr());
   if (policy) {
     codePt = policy->codePt;

@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (c) 1997 Regents of the University of California.
  * All rights reserved.
@@ -96,7 +96,7 @@ public:
 	}
 } class_traceerrormodel;
 
-static char* eu_names[] = { EU_NAMES };
+static const char* eu_names[] = { EU_NAMES };
 
 inline double comb(int n, int k) {
 	int i;
@@ -356,7 +356,7 @@ void ErrorModel::trace_event(char *eventtype)
 	char *nwrk = et_->nbuffer();
 	if (wrk != 0)
 		sprintf(wrk,
-			"E "TIME_FORMAT" ErrModelTimer %p %s",
+			"E " TIME_FORMAT " ErrModelTimer %p %s",
 			et_->round(Scheduler::instance().clock()),   // time
 			this,
 			eventtype                    // event type
@@ -364,7 +364,7 @@ void ErrorModel::trace_event(char *eventtype)
 	
 	if (nwrk != 0)
 		sprintf(nwrk,
-			"E -t "TIME_FORMAT" ErrModelTimer %p %s",
+			"E -t " TIME_FORMAT " ErrModelTimer %p %s",
 			et_->round(Scheduler::instance().clock()),   // time
 			this,
 			eventtype                    // event type
@@ -548,7 +548,7 @@ int ComplexTwoStateErrorModel::corruptPkt(Packet* p)
 
 
 
-static char * st_names[]={ST_NAMES};
+static const char * st_names[]={ST_NAMES};
 
 /*
 // MultiState ErrorModel:

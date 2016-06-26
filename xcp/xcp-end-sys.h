@@ -1,4 +1,4 @@
-// -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
+﻿// -*-  Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
 
 /*
  * Copyright (C) 2004 by the University of Southern California
@@ -105,7 +105,7 @@ struct hdr_xcp {
  * 
  * This code is to be written later!
  */
-
+#undef MAX
 #define		MAX(a,b)	((a) > (b) ? (a) : (b))
 #define		TP_TO_TICKS	MAX(1, (t_srtt_ >> T_SRTT_BITS))
 
@@ -128,7 +128,7 @@ public:
 protected:
 	
 	double time_now()  { return  Scheduler::instance().clock(); };
-	void trace_var(char * var_name, double var);
+	void trace_var(const char * var_name, double var);
 	
 	void init_rtt_vars(){
 		srtt_estimate_           = 0.0;

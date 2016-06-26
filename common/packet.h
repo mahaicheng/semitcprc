@@ -284,7 +284,7 @@ public:
 			);
 	}
 private:
-	static char* name_[PT_NTYPE+1];
+	static const char* name_[PT_NTYPE+1];
 };
 extern p_info packet_info; /* map PT_* to string name */
 //extern char* p_info::name_[];

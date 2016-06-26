@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 
 /*
  * logweb.cc
@@ -161,7 +161,7 @@ int LogWebTrafPool::launchReq(int cid, int sid, int size) {
 
 	// Setup TCP connection and done
 	Tcl::instance().evalf("%s launch-req %d %d %s %s %s %s %d %d", 
-			      name(), num_obj++, num_obj,
+			      name(), num_obj+1, num_obj,
 			      client->name(), server->name(),
 			      tcp->name(), snk->name(), num_pkt, NULL);
 

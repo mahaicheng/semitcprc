@@ -1,4 +1,4 @@
-// -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
+﻿// -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
 
 /*
  * ldp.cc
@@ -588,7 +588,7 @@ void LDPAgent::trace(ns_addr_t src, hdr_ldp *hdrldp)
 	}	
 }
 
-char* LDPAgent::parse_msgtype(int msgtype, int lspid)
+const char* LDPAgent::parse_msgtype(int msgtype, int lspid)
 {
 
 	switch (msgtype) {
@@ -617,7 +617,7 @@ char* LDPAgent::parse_msgtype(int msgtype, int lspid)
 	return ("Error");
 }
 
-char* LDPAgent::parse_status(int status)
+const char* LDPAgent::parse_status(int status)
 {
 	switch (status) {
 	case LDP_LoopDetected:

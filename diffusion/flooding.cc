@@ -1,4 +1,4 @@
-
+﻿
 /*
  * flooding.cc
  * Copyright (C) 2000 by the University of Southern California
@@ -132,10 +132,9 @@ void FloodingAgent::ConsiderNew(Packet *pkt)
   unsigned char msg_type = dfh->mess_type;
   unsigned int dtype = dfh->data_type;
 
-  Pkt_Hash_Entry *hashPtr;
   Agent_List *agentPtr;
   PrvCurPtr  RetVal;
-  nsaddr_t   from_nodeID, forward_nodeID;
+  nsaddr_t   from_nodeID;
 
   Packet *gen_pkt;
   hdr_cdiff *gen_dfh;
@@ -143,13 +142,10 @@ void FloodingAgent::ConsiderNew(Packet *pkt)
   switch (msg_type) {
     case INTEREST : 
 
-      hashPtr = PktTable.GetHash(dfh->sender_id, dfh->pk_num);
-
       // Check if it comes from sink agent of this node
       // If so we have to keep it in sink list 
 
       from_nodeID = (dfh->sender_id).addr_;
-      forward_nodeID = (dfh->forward_agent_id).addr_;
 
 
       if (THIS_NODE == from_nodeID) {       

@@ -1,4 +1,4 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
+﻿/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
  *
  * Copyright (c) Xerox Corporation 1997. All rights reserved.
  *  
@@ -195,11 +195,9 @@ void DRR::enque(Packet* pkt)
 	while (bytecnt > blimit_) {
 		Packet *p;
 		hdr_cmn *remch;
-		hdr_ip *remiph;
 		remq=getMaxflow(curr);
 		p=remq->deque();
 		remch=hdr_cmn::access(p);
-		remiph=hdr_ip::access(p);
 		remq->bcount -= remch->size();
 		bytecnt -= remch->size();
 		drop(p);
@@ -215,7 +213,6 @@ void DRR::enque(Packet* pkt)
 Packet *DRR::deque(void) 
 {
 	hdr_cmn *ch;
-	hdr_ip *iph;
 	Packet *pkt=0;
 	if (bytecnt==0) {
 		//fprintf (stderr,"No active flow\n");
@@ -230,7 +227,6 @@ Packet *DRR::deque(void)
 
 		pkt=curr->lookup(0);  
 		ch=hdr_cmn::access(pkt);
-		iph=hdr_ip::access(pkt);
 		if (curr->deficitCounter >= ch->size()) {
 			curr->deficitCounter -= ch->size();
 			pkt=curr->deque();

@@ -477,7 +477,7 @@ void RIOQueue::enque(Packet* pkt)
           curq_ = qlen; // helps to trace queue during arrival, if enabled
 
           if (qavg >= edp_out_.th_min && qlen > 1) {
-                  if (!edp_out_.gentle && qavg >= edp_out_.th_max ||
+                  if ((!edp_out_.gentle && qavg >= edp_out_.th_max) ||
 		      (edp_out_.gentle && qavg >= 2 * edp_out_.th_max)) {
                         droptype = DTYPE_FORCED;  // ? not sure, Yun
                   } else if (edv_out_.old == 0) {

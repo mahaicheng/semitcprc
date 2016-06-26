@@ -1,4 +1,4 @@
-
+﻿
 /*
  * ls.cc
  * Copyright (C) 2000 by the University of Southern California
@@ -81,7 +81,7 @@ public:
 	}
 } lsRoutingInitializer;
 
-static void ls_error(char* msg) 
+static void ls_error(const char* msg) 
 { 
 	fprintf(stderr, "%s\n", msg);
 	abort();
@@ -444,8 +444,8 @@ int LsRetransmissionManager::ackIn(int peerId, const LsMessage& msg)
 {
 	LsUnackPeer* peerPtr = findPtr(peerId);
 	if ((peerPtr == NULL) ||
-	    (peerPtr->tpmSeq_ == LS_INVALID_MESSAGE_ID) &&
-	    peerPtr->lsaMap_.empty())
+	    ((peerPtr->tpmSeq_ == LS_INVALID_MESSAGE_ID) &&
+	    peerPtr->lsaMap_.empty()))
 		// no pending ack for this neighbor 
 		return 0;
 

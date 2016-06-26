@@ -1,4 +1,4 @@
-// -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
+﻿// -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*-
 
 /*
  * ldp.h
@@ -168,8 +168,8 @@ protected:
 	int    peer_;
 	void   trace(ns_addr_t src, hdr_ldp *hdrldp);
   
-	char* parse_msgtype(int msgtype, int lspid);
-	char* parse_status(int status);
+	const char* parse_msgtype(int msgtype, int lspid);
+	const char* parse_status(int status);
   
 	MsgT  MSGT_;
 };

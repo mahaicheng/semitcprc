@@ -1,4 +1,4 @@
-
+﻿
 /*
  * mobicache.cc
  * Copyright (C) 2000 by the University of Southern California
@@ -98,7 +98,7 @@ class Cache {
 friend class MobiCache;
 
 public:
-  Cache(char *name, int size, MobiCache *rtcache);
+  Cache(const char *name, int size, MobiCache *rtcache);
   ~Cache();
 
   int pickVictim(int exclude = -1);
@@ -118,7 +118,7 @@ private:
   int size;
   int victim_ptr;		// next victim for eviction
   MobiCache *routecache;
-  char *name;
+  const char *name;
 };
 
 ///////////////////////////////////////////////////////////////////////////
@@ -478,7 +478,7 @@ MobiCache::findRoute(ID dest, Path& route, int for_me)
   class Cache routines
 ---------------------------------------------------------------------------*/
 
-Cache::Cache(char *name, int size, MobiCache *rtcache)
+Cache::Cache(const char *name, int size, MobiCache *rtcache)
 {
   this->name = name;
   this->size = size;

@@ -1,4 +1,4 @@
-/* -*- c++ -*-
+﻿/* -*- c++ -*-
    dsr-priqueue.h
    
    A simple priority queue with a remove packet function
@@ -118,7 +118,7 @@ private:
   CMUPriQueueHandler	prq_qh_;
 	
 protected:
-  void trace(char* fmt, ...);
+  void trace(const char* fmt, ...);
   void log_stats(void);
 
   //TAILQ_ENTRY(CMUPriQueue) prq_list_;

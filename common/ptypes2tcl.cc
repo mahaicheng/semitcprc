@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <ctype.h>
 #include "packet.h"
 
@@ -10,10 +10,10 @@
 #define TCL2C_INT
 #endif
 
-char* p_info::name_[PT_NTYPE+1];
+const char* p_info::name_[PT_NTYPE+1];
 
 void
-printLine(char *s) {
+printLine(const char *s) {
 #ifdef TCL2C_INT
 	for (unsigned int i = 0; i < strlen(s); i++) 
 		if ((i > 0) && ((i % 20) == 0))

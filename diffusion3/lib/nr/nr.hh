@@ -1,4 +1,4 @@
-// 
+﻿// 
 // nr.hh         : Network Routing Class Definitions
 // authors       : Dan Coffin, John Heidemann, Dan Van Hook
 // authors       : Fabio Silva
@@ -307,6 +307,10 @@ public:
   NRSimpleAttribute<T>* make(int op, T val, int size = -1) {
     return new NRSimpleAttribute<T>(key_, type_, op, val, size);
   };
+  NRSimpleAttribute<const char*>* make(int op, const char *val, int size = -1)
+  {
+	return new NRSimpleAttribute<const char*>(key_, type_, op, val, size);
+	}
   NRSimpleAttribute<T>* find(NRAttrVec *attrs,
 			     NRAttrVec::iterator *place = NULL) {
     return (NRSimpleAttribute<T>*)NRAttribute::find_key_from(key_, attrs, attrs->begin(), place);

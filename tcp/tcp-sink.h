@@ -41,6 +41,7 @@
 #include"mac/mac-802_11.h"
 #include "agent.h"
 #include<deque>
+#include<stdio.h>
 #include "tcp.h"
 
 /* max window size */
@@ -126,12 +127,14 @@ public:
 	void reset();
 	int command(int argc, const char*const* argv);
 	TracedInt& maxsackblocks() { return max_sack_blocks_; }
-protected:
-	void backoff_timeout();
 	void setBackoffTimer()
 	{
 			backoff_timer_.resched((Random::random()%cw_ + 1)*timeslot_);
 	}
+	double sendTime_; 	// set but not use
+protected:
+	void backoff_timeout();
+
 	void send_timeout();
 	void setSendTimer()
 	{

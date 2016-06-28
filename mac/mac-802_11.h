@@ -291,6 +291,11 @@ public:
         void trace_event(char *, Packet *);
         EventTrace *et_;
 		size_t maxAckQueueSize_;
+		double avgSendTime_;
+		double maxSendTime_;
+		double minSendTime_;
+		int sendingDataSeqno_;
+		double receiveTime_;
 
 protected:
 	void	backoffHandler(void);

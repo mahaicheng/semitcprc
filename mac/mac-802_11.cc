@@ -90,9 +90,10 @@ Mac802_11::checkBackoffTimer()
 		mhBackoff_.pause();
 	
 	// Inter nodes do not have the following process
-	if (!local_congested() && p_to_tcp != nullptr)
+	if (!neighbor_congested() && p_to_tcp != nullptr)
 	{
 		p_to_tcp->setBackoffTimer();
+		p_to_tcp->sendTime_ = avgSendTime_;
 	}
 }
 
@@ -201,6 +202,11 @@ Mac802_11::Mac802_11() :
 	Mac(), 
 		maxAckQueueSize_(0),
 #ifdef SEMITCP
+	avgSendTime_(0.0),
+	maxSendTime_(0.0),
+	minSendTime_(100000.0),
+	sendingDataSeqno_(-1),
+	receiveTime_(0.0),
 	nb_congested(-1.0),
 	kk(0),
 	KK(2),
@@ -1517,6 +1523,13 @@ Mac802_11::send(Packet *p, Handler *h)
 	}
 	
 	callback_ = h;
+	
+	if (HDR_CMN(p)->ptype() == PT_TCP)
+	{
+		sendingDataSeqno_ = HDR_TCP(p)->seqno();
+		receiveTime_ = Scheduler::instance().clock();
+	}
+	
 	sendDATA(p);
 	sendRTS(ETHER_ADDR(dh->dh_ra));
 
@@ -2053,6 +2066,21 @@ Mac802_11::recvACK(Packet *p)
 	{
 		slrc_ = 0;
 	}
+	
+	if (HDR_CMN(pktTx_)->ptype() == PT_TCP)
+	{
+		if (sendingDataSeqno_ == HDR_TCP(pktTx_)->seqno())
+		{
+			double now = Scheduler::instance().clock();
+			double interval = now - receiveTime_;
+		
+			maxSendTime_ = std::max(maxSendTime_, interval);
+			minSendTime_ = std::min(minSendTime_, interval);
+		
+			avgSendTime_ = avgSendTime_ * 0.875 + interval * 0.125;
+		}
+	}
+
 	
 	rst_cw();
 	Packet::free(pktTx_); 

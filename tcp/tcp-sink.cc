@@ -179,8 +179,12 @@ int Acker::update(int seq, int numBytes)
 	return numToDeliver;
 }
 
-TcpSink::TcpSink(Acker* acker) : Agent(PT_ACK), acker_(acker), 
-			save_(NULL),	lastreset_(0.0), 
+TcpSink::TcpSink(Acker* acker) : 
+			Agent(PT_ACK), 
+			sendTime_(0.0),
+			acker_(acker), 
+			save_(NULL),	
+			lastreset_(0.0), 
 			backoff_timer_(this),
 			send_timer_(this),
 			timeslot_(0.000016),
@@ -254,29 +258,36 @@ void TcpSinkSendTimer::expire(Event *)
 
 void TcpSink::backoff_timeout()
 {
-	if (p_to_mac->local_congested() || outgoingACKs.empty())
+	if (p_to_mac->neighbor_congested())
 	{
 		incr_cw();
+		setBackoffTimer();
 	}
 	else
-	{	
-		if (outgoingPkts.size() > p_to_mac->maxAckQueueSize_)
-			p_to_mac->maxAckQueueSize_ = outgoingPkts.size();
+	{	// do not need to reschedule backoff timer. mac will do it
+		if (outgoingACKs.empty())
+		{
+			reset_cw();
+			return;
+		}
 		
-		Packet *p = outgoingPkts.back();
+		if (outgoingACKs.size() > p_to_mac->maxAckQueueSize_)
+			p_to_mac->maxAckQueueSize_ = outgoingACKs.size();
+		
+		Packet *p = outgoingACKs.back();
 		send(p, 0);
-		outgoingPkts.pop_back();
+		outgoingACKs.pop_back();
 		
-		for (Packet *p : outgoingPkts)
+		for (Packet *p : outgoingACKs)
 		{
 			Packet::free(p);
 		}
-		outgoingPkts.clear();
+		outgoingACKs.clear();
 		
-		decr_cw();
+		//decr_cw();
 		//setSendTimer();
+		reset_cw();
 	}
-	setBackoffTimer();
 }
 
 void TcpSink::send_timeout()
@@ -394,24 +405,33 @@ void TcpSink::ack(Packet* opkt)
         acker_->last_ack_sent_ = ntcp->seqno();
         // printf("ACK %d ts %f\n", ntcp->seqno(), ntcp->ts_echo());
 		
-	if (ntcp->seqno() < otcp->seqno() \
-		|| (!outgoingACKs.empty() \
-			&& ntcp->seqno() <= (outgoingACKs.back())->seqno())) 
-	{	
-		// duplicate ACK, send it
-		send(npkt, 0);
+	bool compressAck = false;
+	if (compressAck)
+	{
+		if (ntcp->seqno() < otcp->seqno() \
+			|| (!outgoingACKs.empty() \
+				&& ntcp->seqno() <= HDR_TCP(outgoingACKs.back())->seqno()))
+		{	
+			// duplicate ACK, send it
+			send(npkt, 0);
 		
-		// do not forget to free the ACKs 
-		for (auto p : outgoingACKs)
-		{
-			Packet::free(p);
+			// do not forget to free the ACKs 
+			for (auto p : outgoingACKs)
+			{
+				Packet::free(p);
+			}
+			outgoingACKs.clear();
 		}
-		outgoingACKs.clear();
+		else
+		{
+			outgoingACKs.push_back(npkt);
+		}
 	}
 	else
 	{
-		outgoingACKs.push_back(npkt);
+		send(npkt, 0);
 	}
+	
 }
 void TcpSink::add_to_ack(Packet*)
 {

@@ -78,6 +78,7 @@ class MaTcpAgent : public TcpAgent
 {
 	friend class TcpBackoffTimer;
 	friend class TcpSendTimer;
+	
 public:
         MaTcpAgent();
 		virtual void recv(Packet*, Handler*);
@@ -86,6 +87,8 @@ public:
 		{
 			backoffTimer_.resched((Random::random()%cw_ + 1)*timeslot_);
 		}
+		double sendTime_;
+
 protected:
         virtual void timeout(int tno);
 		virtual void dupack_action();
@@ -104,21 +107,28 @@ protected:
 			// 			3288 + 1240 = 4528
 			double data = 24 + 256 + 256 + 2496 + 256;
 			//double ack	= 24 + 256 + 256 + 448  + 256;
-			sendTimer_.resched((data) / 1000000);
+			if (sendTime_ <= (data/1000000)) // first time
+			{
+				sendTimer_.resched(1 / 1000000);
+			}
+			else
+			{
+				sendTimer_.resched(sendTime_-(data/1000000));
+			}
 		}
 		
 private:
         Mac802_11* p_to_mac;
         TcpBackoffTimer backoffTimer_;
 		TcpSendTimer sendTimer_;
-		
-		std::set<int> retransmitPkts;
+		bool needRetransmit;
 		
 		// debug
 		int congestedCount;
 		int retryCount;
 		int maxRetryCount;
 		int notCongestedCount;
+		int retransmitCount;
 		// end of debug
 		
 		int cw_;

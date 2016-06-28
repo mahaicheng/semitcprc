@@ -54,8 +54,10 @@
 #include "dsr-priqueue.h"
 #include "aodv/aodv.h"
 #include "dsr/dsragent.h"
-#include "tcp/matcp.h"
+//#include "tcp/matcp.h"
 #include <mac.h>
+
+class MaTcpAgent;
 
 //#define MACDEBUG
 #ifdef SEMITCP
@@ -387,13 +389,14 @@ private:
 	refuse_state refuse ( Packet* p );  //是否拒绝回复CTS或者回复CTSC
 	bool defer_rts(Neighbour *);    //decide whether defer to send RTS or not
 public:
-	bool congested(); 
+	bool neighbor_congested(); 
+	bool local_congested();
 private:
 	void print_to_trace(Packet* p, char* function = NULL);
 
 	int CALLRT;     //发送多次RTS或者DATA失败后将数据包回退给路由层，路由层重新找路
 	
-	//double avg_length;
+	MaTcpAgent *p_to_tcp;
 	AODV* p_aodv_agent;
 	PriQueue* p_to_prique;
 	

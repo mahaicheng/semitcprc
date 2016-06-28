@@ -82,33 +82,37 @@ public:
         MaTcpAgent();
 		virtual void recv(Packet*, Handler*);
         int command(int argc, const char*const* argv);
+		void setBackoffTimer()
+		{
+			backoffTimer_.resched((Random::random()%cw_ + 1)*timeslot_);
+		}
 protected:
         virtual void timeout(int tno);
 		virtual void dupack_action();
 		virtual void send_one();
 		virtual void send_much(int force, int reason, int maxburst = 0);
 		void backoff_timeout();
-		void setBackoffTimer()
-		{
-			backoffTimer_.resched((Random::random()%cw_ + 1)*timeslot_);
-		}
-		void incr_cw(){cw_ <<= 1; if (cw_ < 0) cw_ = (1 << 30) - 1;}
-		void decr_cw(){cw_ >>= 1; if(cw_ < 1) cw_ = 1;}
-		void reset_cw(){cw_ = 1;}
+
+		void incr_cw() {cw_ <<= 1; if (cw_ > 1023)  cw_ = 1023;}
+		void decr_cw() {cw_ >>= 1; if (cw_ < 31)  	cw_ = 31;}
+		void reset_cw(){cw_ = 31;}
 		
 		void send_timeout();
 		void setSendTimer()
 		{
-			//      3*sifs + rts + cts + data + ack
+			//        3*sifs + rts + cts + data + ack
+			// 			3288 + 1240 = 4528
 			double data = 24 + 256 + 256 + 2496 + 256;
-			double ack	= 24 + 256 + 256 + 448  + 256;
-			sendTimer_.resched((data + ack) / 1000000);
+			//double ack	= 24 + 256 + 256 + 448  + 256;
+			sendTimer_.resched((data) / 1000000);
 		}
 		
 private:
         Mac802_11* p_to_mac;
         TcpBackoffTimer backoffTimer_;
 		TcpSendTimer sendTimer_;
+		
+		std::set<int> retransmitPkts;
 		
 		// debug
 		int congestedCount;

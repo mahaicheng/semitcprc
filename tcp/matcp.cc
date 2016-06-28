@@ -75,7 +75,7 @@ MaTcpAgent::MaTcpAgent() :
 			maxRetryCount(0),
 			notCongestedCount(0),
 			cw_(1),
-			timeslot_(0.000001)
+			timeslot_(0.000016)
 { 
 	
 }
@@ -89,14 +89,7 @@ void MaTcpAgent::recv(Packet *pkt, Handler *h)
 		endQuickStart();
 	if (qs_requested_ == 1)
 		processQuickStart(pkt);
-#ifdef notdef
-	if (pkt->type_ != PT_ACK) {
-		Tcl::instance().evalf("%s error \"received non-ack\"",
-				      name());
-		Packet::free(pkt);
-		return;
-	}
-#endif
+
 	/* W.N.: check if this is from a previous incarnation */
 	if (tcph->ts() < lastreset_) {
 		// Remove packet and do nothing
@@ -138,8 +131,8 @@ void MaTcpAgent::recv(Packet *pkt, Handler *h)
 	/*
 	 * Try to send more data.
 	 */
-	/*if (valid_ack || aggressive_maxburst_)
-		send_much(0, 0, maxburst_);*/
+	//if (valid_ack || aggressive_maxburst_)
+		//send_much(0, 0, maxburst_);
 }
 
 void MaTcpAgent::send_much(int force, int reason, int maxburst)
@@ -158,22 +151,29 @@ void MaTcpAgent::send_much(int force, int reason, int maxburst)
 				process_qoption_after_send () ; 
 			t_seqno_ ++ ;
 	}
-	
-	if (sendTimer_.status() == TIMER_IDLE)
-		setSendTimer();
-	
+		
 	/* call helper function */
 	send_helper(maxburst);
 }
 
 void MaTcpAgent::send_timeout()
 {
-	setBackoffTimer();
+	if (!retransmitPkts.empty())
+	{
+		output(highest_ack_+1);
+		retransmitPkts.clear();
+	}
+	else
+	{
+		send_much(1, 0, 1);
+	}
+	
+	reset_cw();
 }
 
 void MaTcpAgent::backoff_timeout()
 {
-	if (p_to_mac->congested())
+	if (p_to_mac->local_congested())
 	{
 		congestedCount++;
 		retryCount++;
@@ -187,11 +187,11 @@ void MaTcpAgent::backoff_timeout()
 	{
 		retryCount = 0;
 		notCongestedCount++;
-
-		send_much(1, 0, 1);
 		
-		decr_cw();
+		//send_much(1, 0, 1);
+		//decr_cw();
 		setSendTimer();
+		//setBackoffTimer();
 	}
 }
 
@@ -271,7 +271,10 @@ void MaTcpAgent::timeout ( int tno )
 		   then we don't need to back off (verified by simulations). 
 		 */	
 		last_cwnd_action_ = CWND_ACTION_TIMEOUT;
-		output(highest_ack_ + 1);
+		retransmitPkts.insert(highest_ack_+1);
+		//output(highest_ack_ + 1);
+		//incr_cw();
+		reset_rtx_timer(1, 0);
 	}
 	else {
 		assert(0); 	// would not run to here
@@ -289,7 +292,10 @@ void MaTcpAgent::dupack_action()
 	if (ecn_ && last_cwnd_action_ == CWND_ACTION_ECN) {
 		last_cwnd_action_ = CWND_ACTION_DUPACK;
 		slowdown(CLOSE_CWND_ONE);
-		output(highest_ack_ + 1);
+		retransmitPkts.insert(highest_ack_+1);
+		//output(highest_ack_ + 1);
+		//incr_cw();
+		reset_rtx_timer(1, 0);
 		return;
 	}
 
@@ -310,7 +316,10 @@ tahoe_action:
 		last_cwnd_action_ = CWND_ACTION_DUPACK;
 		slowdown(CLOSE_SSTHRESH_HALF|CLOSE_CWND_ONE);
 	}
-	output(highest_ack_ + 1);
+	//output(highest_ack_ + 1);
+	//incr_cw();
+	retransmitPkts.insert(highest_ack_+1);
+	reset_rtx_timer(1, 0);
 	return;
 }
 

@@ -254,7 +254,7 @@ void TcpSinkSendTimer::expire(Event *)
 
 void TcpSink::backoff_timeout()
 {
-	if (p_to_mac->congested() || outgoingPkts.empty())
+	if (p_to_mac->local_congested() || outgoingACKs.empty())
 	{
 		incr_cw();
 	}
@@ -386,20 +386,32 @@ void TcpSink::ack(Packet* opkt)
 		nf->ecnecho() = 1;
 	acker_->append_ack(hdr_cmn::access(npkt),
 			   ntcp, otcp->seqno());
+	// the add_to_ack function is used in TcpAsymSink. 
+	//do not comment it, for the virtual function usage.
 	add_to_ack(npkt);
-	// the above function is used in TcpAsymSink
 
         // Andrei Gurtov
         acker_->last_ack_sent_ = ntcp->seqno();
         // printf("ACK %d ts %f\n", ntcp->seqno(), ntcp->ts_echo());
 		
-	/*outgoingPkts.push_back(npkt);
-	
-	if (backoff_timer_.status() == TIMER_IDLE)
-		setBackoffTimer();*/
-	
-	// send it
-	send(npkt, 0);
+	if (ntcp->seqno() < otcp->seqno() \
+		|| (!outgoingACKs.empty() \
+			&& ntcp->seqno() <= (outgoingACKs.back())->seqno())) 
+	{	
+		// duplicate ACK, send it
+		send(npkt, 0);
+		
+		// do not forget to free the ACKs 
+		for (auto p : outgoingACKs)
+		{
+			Packet::free(p);
+		}
+		outgoingACKs.clear();
+	}
+	else
+	{
+		outgoingACKs.push_back(npkt);
+	}
 }
 void TcpSink::add_to_ack(Packet*)
 {

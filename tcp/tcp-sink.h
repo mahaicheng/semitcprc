@@ -135,8 +135,8 @@ protected:
 	void send_timeout();
 	void setSendTimer()
 	{
-		//      2*sifs + rts + cts + data + ack
-		double us = 16 + 256 + 256 + 448 + 256;
+		//      3*sifs + rts + cts + data + ack
+		double us = 24 + 256 + 256 + 448 + 256;
 		send_timer_.resched(us / 1000000);
 	}
 	void ack(Packet*);
@@ -162,7 +162,7 @@ protected:
 	double lastreset_; 	/* W.N. used for detecting packets  */
 				/* from previous incarnations */
 				
-	std::deque<Packet*> outgoingPkts;
+	std::deque<Packet*> outgoingACKs;
 	TcpSinkBackoffTimer backoff_timer_;
 	TcpSinkSendTimer send_timer_;
 	
@@ -170,22 +170,9 @@ protected:
 	int cw_;
 	Mac802_11 *p_to_mac;
 
-	void incr_cw()
-	{
-		cw_ <<= 1;
-		if (cw_ < 0)
-			cw_ = (1 << 30) - 1;
-	}
-	void decr_cw()
-	{
-		cw_ <<= 1;
-		if (cw_ < 1)
-			cw_ = 1;
-	}
-	void reset_cw()
-	{
-		cw_ = 1;
-	}
+	void incr_cw() {cw_ <<= 1; if (cw_ > 1023) cw_ = 1023;}
+	void decr_cw() {cw_ <<= 1; if (cw_ < 31)   cw_ = 31;  }
+	void reset_cw(){cw_ = 31;}
 };
 
 class DelAckSink;

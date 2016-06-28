@@ -88,6 +88,12 @@ Mac802_11::checkBackoffTimer()
 		mhBackoff_.resume(phymib_.getDIFS());
 	if(! is_idle() && mhBackoff_.busy() && ! mhBackoff_.paused())
 		mhBackoff_.pause();
+	
+	// Inter nodes do not have the following process
+	if (!local_congested() && p_to_tcp != nullptr)
+	{
+		p_to_tcp->setBackoffTimer();
+	}
 }
 
 inline void
@@ -198,11 +204,11 @@ Mac802_11::Mac802_11() :
 	nb_congested(-1.0),
 	kk(0),
 	KK(2),
-	last_rts_frame(NULL),
+	last_rts_frame(nullptr),
 	round_trip_time(0.020),
 	CALLRT(1),
-	p_aodv_agent(0),
-	p_to_prique(0),
+	p_aodv_agent(nullptr),
+	p_to_prique(nullptr),
 
 /*******MHC DEBUG************/
 
@@ -229,7 +235,7 @@ Mac802_11::Mac802_11() :
        
 /*******MHC DEBUG***********/
 phymib_(this), macmib_(this),  
-	pktPre_(NULL),
+	pktPre_(nullptr),
 	nbtimer(this),
 #endif
 mhIF_(this), mhNav_(this),
@@ -245,7 +251,7 @@ mhIF_(this), mhNav_(this),
 	nav_ = 0.0;
 	tx_state_ = rx_state_ = MAC_IDLE;
 	tx_active_ = 0;
-	eotPacket_ = NULL;
+	eotPacket_ = nullptr;
 	pktRTS_ = 0;
 	pktCTRL_ = 0;		
 	cw_ = phymib_.getCWMin();
@@ -273,7 +279,7 @@ mhIF_(this), mhNav_(this),
 	else
 		dataRate_ = bandwidth_;
 
-        EOTtarget_ = 0;
+        EOTtarget_ = nullptr;
        	bss_id_ = IBSS_ID;
 	//printf("bssid in constructor %d\n",bss_id_);
 }
@@ -386,6 +392,11 @@ else if (argc == 3) {
 			} else {
 				return TCL_OK;
 			}
+		}
+		else if (strcmp(argv[1], "mac-get-matcp") == 0)
+		{
+			p_to_tcp = (MaTcpAgent*)TclObject::lookup(argv[2]);
+			return (p_to_tcp != nullptr) ? TCL_OK : TCL_ERROR;
 		}
 #endif
 	}
@@ -824,7 +835,7 @@ Mac802_11::send_timer()
 
 		if(cf->cf_fc.fc_order) {///CTSC
 			nb->set_helped_by_me(false);///If fail to recv DATA, reset helped_by_me
-			if(congested() && pktPre_ && !pktTx_ && RECEIVER(pktPre_) == RECEIVER(pktCTRL_))
+			if(neighbor_congested() && pktPre_ && !pktTx_ && RECEIVER(pktPre_) == RECEIVER(pktCTRL_))
 				restore_tx();
 		}
 	#endif
@@ -1041,7 +1052,7 @@ Mac802_11::check_pktRTS()
 	}
 #ifdef SEMITCP
 	mh->dh_fc.fc_order = false;///RTS
-	if(congested())
+	if(neighbor_congested())
 		mh->dh_fc.fc_order = true;///RTSC
 
 	RTS_send++;
@@ -2063,7 +2074,7 @@ Mac802_11::recvACK(Packet *p)
 //this function count the number of packets in a node, but just count the packets
 //receive from from other node for absolutely seperate the function of Tc and m
 
-bool Mac802_11::congested()
+bool Mac802_11::neighbor_congested()
 {
 	statistics();
 	
@@ -2076,6 +2087,11 @@ bool Mac802_11::congested()
 	pktCount += p_to_prique->length() + p_aodv_agent->length();
 	
 	return pktCount >= p_to_prique->congestionThreshold();
+}
+
+bool Mac802_11::local_congested()
+{
+	return neighbor_congested() || !is_idle();
 }
 
 void Mac802_11::overHear( Packet* p )
@@ -2146,7 +2162,7 @@ Mac802_11::defer_rts(Neighbour *nb)
 	statistics();
     const double now = Scheduler::instance().clock();
 	
-    if(congested())	//本节点拥塞了，不推迟发送RTS or RTSC
+    if(neighbor_congested())	//本节点拥塞了，不推迟发送RTS or RTSC
 		return false;
     else if(kk < KK && now - nb_congested < round_trip_time)
 		return true;
@@ -2169,7 +2185,7 @@ refuse_state Mac802_11::refuse( Packet* p )
 	if (rf->rf_fc.fc_subtype == MAC_Subtype_uRTS)///the RTS packet is sent for control packet like
 		return CTS;		// NOTE: But actually, the control packets are broadcast, Would not send a RTS
 	bool RTSC = rf->rf_fc.fc_order;
-	bool me_congested = congested();
+	bool me_congested = neighbor_congested();
 	
 	if(pkt) {   //have data packet to send
 		if(!HDR_CMN(pkt)->control_packet())

@@ -132,6 +132,7 @@ public:
 			backoff_timer_.resched((Random::random()%cw_ + 1)*timeslot_);
 	}
 	double sendTime_; 	// set but not use
+	double minSendTime_; // set but not use
 protected:
 	void backoff_timeout();
 

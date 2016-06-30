@@ -88,6 +88,7 @@ public:
 			backoffTimer_.resched((Random::random()%cw_ + 1)*timeslot_);
 		}
 		double sendTime_;
+		double minSendTime_;
 
 protected:
         virtual void timeout(int tno);
@@ -101,21 +102,7 @@ protected:
 		void reset_cw(){cw_ = 31;}
 		
 		void send_timeout();
-		void setSendTimer()
-		{
-			//        3*sifs + rts + cts + data + ack
-			// 			3288 + 1240 = 4528
-			double data = 24 + 256 + 256 + 2496 + 256;
-			//double ack	= 24 + 256 + 256 + 448  + 256;
-			if (sendTime_ <= (data/1000000)) // first time
-			{
-				sendTimer_.resched(1 / 1000000);
-			}
-			else
-			{
-				sendTimer_.resched(sendTime_-(data/1000000));
-			}
-		}
+		void setSendTimer();
 		
 private:
         Mac802_11* p_to_mac;
@@ -129,6 +116,9 @@ private:
 		int maxRetryCount;
 		int notCongestedCount;
 		int retransmitCount;
+		int incrTimeCount;
+		int decrTimeCount;
+		int notChangeTimeCount;
 		// end of debug
 		
 		int cw_;

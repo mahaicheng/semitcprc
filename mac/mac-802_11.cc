@@ -94,6 +94,7 @@ Mac802_11::checkBackoffTimer()
 	{
 		p_to_tcp->setBackoffTimer();
 		p_to_tcp->sendTime_ = avgSendTime_;
+		p_to_tcp->minSendTime_ = minSendTime_;
 	}
 }
 
@@ -1131,6 +1132,12 @@ Mac802_11::sendRTS(int dst)
 	struct rts_frame *rf = (struct rts_frame*)p->access(hdr_mac::offset_);
 	
 	assert(pktTx_);
+	if (HDR_CMN(pktTx_)->ptype() == PT_TCP && HDR_CMN(pktTx_)->size() > 300)
+	{
+		sendingDataSeqno_ = HDR_TCP(pktTx_)->seqno();
+		receiveTime_ = Scheduler::instance().clock();
+	}
+	
 	assert(pktRTS_ == 0);
 
 	/*
@@ -1523,12 +1530,6 @@ Mac802_11::send(Packet *p, Handler *h)
 	}
 	
 	callback_ = h;
-	
-	if (HDR_CMN(p)->ptype() == PT_TCP)
-	{
-		sendingDataSeqno_ = HDR_TCP(p)->seqno();
-		receiveTime_ = Scheduler::instance().clock();
-	}
 	
 	sendDATA(p);
 	sendRTS(ETHER_ADDR(dh->dh_ra));
@@ -2067,7 +2068,7 @@ Mac802_11::recvACK(Packet *p)
 		slrc_ = 0;
 	}
 	
-	if (HDR_CMN(pktTx_)->ptype() == PT_TCP)
+	if (HDR_CMN(pktTx_)->ptype() == PT_TCP && HDR_CMN(pktTx_)->size() > 300)
 	{
 		if (sendingDataSeqno_ == HDR_TCP(pktTx_)->seqno())
 		{
@@ -2077,10 +2078,16 @@ Mac802_11::recvACK(Packet *p)
 			maxSendTime_ = std::max(maxSendTime_, interval);
 			minSendTime_ = std::min(minSendTime_, interval);
 		
-			avgSendTime_ = avgSendTime_ * 0.875 + interval * 0.125;
+			if (avgSendTime_ < 0.0001)
+			{
+				avgSendTime_ = interval;
+			}
+			else
+			{
+				avgSendTime_ = avgSendTime_ * 0.875 + interval * 0.125;
+			}
 		}
 	}
-
 	
 	rst_cw();
 	Packet::free(pktTx_); 

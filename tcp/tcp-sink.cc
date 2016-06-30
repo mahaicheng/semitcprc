@@ -182,6 +182,7 @@ int Acker::update(int seq, int numBytes)
 TcpSink::TcpSink(Acker* acker) : 
 			Agent(PT_ACK), 
 			sendTime_(0.0),
+			minSendTime_(10000.0),
 			acker_(acker), 
 			save_(NULL),	
 			lastreset_(0.0), 

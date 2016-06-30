@@ -68,6 +68,7 @@ public:
 
 MaTcpAgent::MaTcpAgent() : 
 			sendTime_(0.0),
+			minSendTime_(10000.0),
 			p_to_mac(nullptr),
 			backoffTimer_(this),	
 			sendTimer_(this),
@@ -77,6 +78,9 @@ MaTcpAgent::MaTcpAgent() :
 			maxRetryCount(0),
 			notCongestedCount(0),
 			retransmitCount(0),
+			incrTimeCount(0),
+			decrTimeCount(0),
+			notChangeTimeCount(0),
 			cw_(1),
 			timeslot_(0.000016)
 { 
@@ -220,6 +224,9 @@ int MaTcpAgent::command ( int argc, const char*const* argv )
 			fprintf(stderr, "    avgSendTime:\t%.2f\n", (p_to_mac->avgSendTime_)*1000);
 			fprintf(stderr, "    maxSendTime:\t%.2f\n", (p_to_mac->maxSendTime_)*1000);
 			fprintf(stderr, "    minSendTime:\t%.2f\n\n", (p_to_mac->minSendTime_)*1000);
+			fprintf(stderr, "     incrTimeCount:\t%d\n", incrTimeCount);
+			fprintf(stderr, "     decrTimeCount:\t%d\n", decrTimeCount);
+			fprintf(stderr, "notChangeTimeCount:\t%d\n\n", notChangeTimeCount);
 			return TCL_OK;
 		}
         return TcpAgent::command ( argc, argv );
@@ -330,4 +337,40 @@ tahoe_action:
 void MaTcpAgent::send_one()
 {
 	// nothing to do
+}
+
+void MaTcpAgent::setSendTimer()
+{
+	//        3*sifs + rts + cts + data + ack
+	// 			3288 + 1240 = 4528
+	//double data = 24 + 256 + 256 + 2496 + 256;
+	//double ack	= 24 + 256 + 256 + 448  + 256;
+	static double time = 6000 / 1000000; //initialize to 6ms
+	
+	if (minSendTime_ > 100.0) // first time
+	{
+		sendTimer_.resched(6000 / 1000000);
+	}
+	else
+	{
+		if (sendTime_ > minSendTime_ * 3.0)
+		{
+			incrTimeCount++;
+			time += 0.00005; 	// decrease the sending rate
+		}
+		else if (sendTime_ < minSendTime_ * 2.0)
+		{
+			decrTimeCount++;
+			time -= 0.00005; 	// increase the sending rate
+			
+			if (time < 0)
+				time += 0.00005;
+		}
+		else
+		{
+			notChangeTimeCount++;
+		}
+			
+		sendTimer_.resched(time);
+	}
 }

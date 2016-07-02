@@ -90,9 +90,10 @@ Mac802_11::checkBackoffTimer()
 		mhBackoff_.pause();
 	
 	// Inter nodes do not have the following process
-	if (!neighbor_congested() && p_to_tcp != nullptr)
+	if (!local_congested() && p_to_tcp != nullptr)
 	{
-		p_to_tcp->setBackoffTimer();
+		//p_to_tcp->setBackoffTimer();
+		p_to_tcp->setSendTimer();
 		p_to_tcp->sendTime_ = avgSendTime_;
 		p_to_tcp->minSendTime_ = minSendTime_;
 	}
@@ -2078,7 +2079,7 @@ Mac802_11::recvACK(Packet *p)
 			maxSendTime_ = std::max(maxSendTime_, interval);
 			minSendTime_ = std::min(minSendTime_, interval);
 		
-			if (avgSendTime_ < 0.0001)
+			if (avgSendTime_ < 0.0001) 	// first time
 			{
 				avgSendTime_ = interval;
 			}

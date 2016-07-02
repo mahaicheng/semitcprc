@@ -131,18 +131,18 @@ public:
 	{
 			backoff_timer_.resched((Random::random()%cw_ + 1)*timeslot_);
 	}
-	double sendTime_; 	// set but not use
-	double minSendTime_; // set but not use
-protected:
-	void backoff_timeout();
-
-	void send_timeout();
 	void setSendTimer()
 	{
 		//      3*sifs + rts + cts + data + ack
 		double us = 24 + 256 + 256 + 448 + 256;
 		send_timer_.resched(us / 1000000);
 	}
+	
+	double sendTime_; 	// set but not use
+	double minSendTime_; // set but not use
+protected:
+	void backoff_timeout();
+	void send_timeout();
 	void ack(Packet*);
 	virtual void add_to_ack(Packet* pkt);
 

@@ -80,6 +80,7 @@ MaTcpAgent::MaTcpAgent() :
 			retransmitCount(0),
 			incrTimeCount(0),
 			decrTimeCount(0),
+			underFlowCount(0),
 			notChangeTimeCount(0),
 			cw_(1),
 			timeslot_(0.000016)
@@ -168,15 +169,15 @@ void MaTcpAgent::send_timeout()
 	if (needRetransmit)
 	{
 		retransmitCount++;
-		output(highest_ack_+1);
+		output(highest_ack_+1, TCP_REASON_DUPACK);
 		needRetransmit = false;
 	}
 	else
 	{
 		send_much(1, 0, 1);
 	}
-	
-	reset_cw();
+	// Do not need to reschedule sendTimer. MAC will reschedule it.
+	//reset_cw();
 }
 
 void MaTcpAgent::backoff_timeout()
@@ -195,11 +196,11 @@ void MaTcpAgent::backoff_timeout()
 	{
 		retryCount = 0;
 		notCongestedCount++;
-		
-		//send_much(1, 0, 1);
-		//decr_cw();
-		setSendTimer();
-		//setBackoffTimer();
+
+		send_much(1, 0, 1);
+		decr_cw();
+		//setSendTimer();
+		setBackoffTimer();
 	}
 }
 
@@ -226,6 +227,7 @@ int MaTcpAgent::command ( int argc, const char*const* argv )
 			fprintf(stderr, "    minSendTime:\t%.2f\n\n", (p_to_mac->minSendTime_)*1000);
 			fprintf(stderr, "     incrTimeCount:\t%d\n", incrTimeCount);
 			fprintf(stderr, "     decrTimeCount:\t%d\n", decrTimeCount);
+			fprintf(stderr, "    underFlowCount:\t\t%d\n", underFlowCount);
 			fprintf(stderr, "notChangeTimeCount:\t%d\n\n", notChangeTimeCount);
 			return TCL_OK;
 		}
@@ -287,7 +289,6 @@ void MaTcpAgent::timeout ( int tno )
 		 */	
 		last_cwnd_action_ = CWND_ACTION_TIMEOUT;
 		needRetransmit = true;
-
 		reset_rtx_timer(1, 0);
 	}
 	else {
@@ -345,26 +346,29 @@ void MaTcpAgent::setSendTimer()
 	// 			3288 + 1240 = 4528
 	//double data = 24 + 256 + 256 + 2496 + 256;
 	//double ack	= 24 + 256 + 256 + 448  + 256;
-	static double time = 6000 / 1000000; //initialize to 6ms
+	static double time = 1 / 1000000; //initialize to 6ms
 	
 	if (minSendTime_ > 100.0) // first time
 	{
-		sendTimer_.resched(6000 / 1000000);
+		sendTimer_.resched(1 / 1000000);
 	}
 	else
 	{
-		if (sendTime_ > minSendTime_ * 3.0)
+		if (sendTime_ > minSendTime_ * 1.8)
 		{
 			incrTimeCount++;
-			time += 0.00005; 	// decrease the sending rate
+			time += 0.00001; 	// decrease sending rate
 		}
-		else if (sendTime_ < minSendTime_ * 2.0)
+		else if (sendTime_ < minSendTime_ * 1.7)
 		{
 			decrTimeCount++;
-			time -= 0.00005; 	// increase the sending rate
+			time -= 0.00005; 	// increase sending rate
 			
 			if (time < 0)
+			{
 				time += 0.00005;
+				underFlowCount++;
+			}
 		}
 		else
 		{

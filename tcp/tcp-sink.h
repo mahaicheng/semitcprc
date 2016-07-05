@@ -100,49 +100,19 @@ protected:
 	void trace(TracedVar*);
 };
 
-class TcpSinkBackoffTimer : public TimerHandler
-{
-public:
-	TcpSinkBackoffTimer(TcpSink *a) : a_(a) {}
-private:
-	virtual void expire(Event *e);
-	TcpSink *a_;
-};
-
-class TcpSinkSendTimer : public TimerHandler
-{
-public:
-	TcpSinkSendTimer(TcpSink *a) : a_(a) {}
-private:
-	virtual void expire(Event *e);
-	TcpSink *a_;
-};
-
 class TcpSink : public Agent {
-	friend class TcpSinkBackoffTimer;
-	friend class TcpSinkSendTimer;
 public:
 	TcpSink(Acker*);
 	void recv(Packet* pkt, Handler*);
 	void reset();
 	int command(int argc, const char*const* argv);
 	TracedInt& maxsackblocks() { return max_sack_blocks_; }
-	void setBackoffTimer()
-	{
-			backoff_timer_.resched((Random::random()%cw_ + 1)*timeslot_);
-	}
-	void setSendTimer()
-	{
-		//      3*sifs + rts + cts + data + ack
-		double us = 24 + 256 + 256 + 448 + 256;
-		send_timer_.resched(us / 1000000);
-	}
+
+	void setSendTimer();
 	
 	double sendTime_; 	// set but not use
 	double minSendTime_; // set but not use
 protected:
-	void backoff_timeout();
-	void send_timeout();
 	void ack(Packet*);
 	virtual void add_to_ack(Packet* pkt);
 
@@ -167,16 +137,8 @@ protected:
 				/* from previous incarnations */
 				
 	std::deque<Packet*> outgoingACKs;
-	TcpSinkBackoffTimer backoff_timer_;
-	TcpSinkSendTimer send_timer_;
-	
-	double timeslot_;
-	int cw_;
 	Mac802_11 *p_to_mac;
-
-	void incr_cw() {cw_ <<= 1; if (cw_ > 1023) cw_ = 1023;}
-	void decr_cw() {cw_ <<= 1; if (cw_ < 31)   cw_ = 31;  }
-	void reset_cw(){cw_ = 31;}
+	int last_ack_sent_;
 };
 
 class DelAckSink;

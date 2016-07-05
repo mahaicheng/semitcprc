@@ -186,10 +186,6 @@ TcpSink::TcpSink(Acker* acker) :
 			acker_(acker), 
 			save_(NULL),	
 			lastreset_(0.0), 
-			backoff_timer_(this),
-			send_timer_(this),
-			timeslot_(0.000016),
-			cw_(1),
 			p_to_mac(nullptr)
 {
 	bytes_ = 0; 
@@ -247,54 +243,30 @@ void Acker::update_ecn_unacked(int value)
 	ecn_unacked_ = value;
 }
 
-void TcpSinkBackoffTimer::expire(Event *)
+void TcpSink::setSendTimer()
 {
-	a_->backoff_timeout();
-}
-
-void TcpSinkSendTimer::expire(Event *)
-{
-	a_->send_timeout();
-}
-
-void TcpSink::backoff_timeout()
-{
-	if (p_to_mac->neighbor_congested())
+	// do not need to reschedule backoff timer. mac will do it
+	if (outgoingACKs.empty())
+		return;
+	
+	if (outgoingACKs.size() > p_to_mac->maxAckQueueSize_)
+		p_to_mac->maxAckQueueSize_ = outgoingACKs.size();
+	
+	// not empty
+	//Packet *p = outgoingACKs.back();
+	Packet *p = outgoingACKs.front();
+	send(p, nullptr);
+	//outgoingACKs.pop_back();
+	outgoingACKs.pop_front();
+	
+	/*if (!outgoingACKs.empty())
 	{
-		incr_cw();
-		setBackoffTimer();
-	}
-	else
-	{	// do not need to reschedule backoff timer. mac will do it
-		if (outgoingACKs.empty())
-		{
-			reset_cw();
-			return;
-		}
-		
-		if (outgoingACKs.size() > p_to_mac->maxAckQueueSize_)
-			p_to_mac->maxAckQueueSize_ = outgoingACKs.size();
-		
-		Packet *p = outgoingACKs.back();
-		send(p, 0);
-		outgoingACKs.pop_back();
-		
 		for (Packet *p : outgoingACKs)
 		{
 			Packet::free(p);
 		}
-		outgoingACKs.clear();
-		
-		//decr_cw();
-		//setSendTimer();
-		reset_cw();
 	}
-}
-
-void TcpSink::send_timeout()
-{
-	reset_cw();
-	setBackoffTimer();
+	outgoingACKs.clear();*/
 }
 
 int TcpSink::command(int argc, const char*const* argv)
@@ -406,32 +378,43 @@ void TcpSink::ack(Packet* opkt)
         acker_->last_ack_sent_ = ntcp->seqno();
         // printf("ACK %d ts %f\n", ntcp->seqno(), ntcp->ts_echo());
 		
+	// begin compress ACKs
 	bool compressAck = false;
 	if (compressAck)
 	{
-		if (ntcp->seqno() < otcp->seqno() \
+		/*if (ntcp->seqno() < otcp->seqno() \
 			|| (!outgoingACKs.empty() \
 				&& ntcp->seqno() <= HDR_TCP(outgoingACKs.back())->seqno()))
-		{	
-			// duplicate ACK, send it
-			send(npkt, 0);
-		
-			// do not forget to free the ACKs 
-			for (auto p : outgoingACKs)
+		{
+			send(npkt, nullptr);
+			last_ack_sent_ = ntcp->seqno();
+			
+			if (!outgoingACKs.empty())
 			{
-				Packet::free(p);
+				for (auto p : outgoingACKs)
+				{
+					Packet::free(p);
+				}
+				outgoingACKs.clear();
 			}
-			outgoingACKs.clear();
 		}
 		else
 		{
 			outgoingACKs.push_back(npkt);
+		}*/
+		outgoingACKs.push_back(npkt);
+		
+		if (outgoingACKs.size() > 65)
+		{
+			Packet::free(outgoingACKs.front());
+			outgoingACKs.pop_front();
 		}
 	}
 	else
 	{
-		send(npkt, 0);
+		send(npkt, nullptr);
 	}
+	// end of compress ACKs
 	
 }
 void TcpSink::add_to_ack(Packet*)

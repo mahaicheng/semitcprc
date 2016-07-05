@@ -47,11 +47,6 @@
 
 using namespace std;
 
-void TcpBackoffTimer::expire(Event *)
-{
-	a_->backoff_timeout();
-}
-
 void TcpSendTimer::expire(Event* e)
 {
 	a_->send_timeout();
@@ -70,7 +65,6 @@ MaTcpAgent::MaTcpAgent() :
 			sendTime_(0.0),
 			minSendTime_(10000.0),
 			p_to_mac(nullptr),
-			backoffTimer_(this),	
 			sendTimer_(this),
 			needRetransmit(false),
 			congestedCount(0),
@@ -81,9 +75,7 @@ MaTcpAgent::MaTcpAgent() :
 			incrTimeCount(0),
 			decrTimeCount(0),
 			underFlowCount(0),
-			notChangeTimeCount(0),
-			cw_(1),
-			timeslot_(0.000016)
+			notChangeTimeCount(0)
 { 
 	
 }
@@ -178,30 +170,6 @@ void MaTcpAgent::send_timeout()
 	}
 	// Do not need to reschedule sendTimer. MAC will reschedule it.
 	//reset_cw();
-}
-
-void MaTcpAgent::backoff_timeout()
-{
-	if (p_to_mac->local_congested())
-	{
-		congestedCount++;
-		retryCount++;
-		
-		maxRetryCount = std::max(retryCount, maxRetryCount);
-		
-		incr_cw();
-		setBackoffTimer();
-	}
-	else 	// not congested
-	{
-		retryCount = 0;
-		notCongestedCount++;
-
-		send_much(1, 0, 1);
-		decr_cw();
-		//setSendTimer();
-		setBackoffTimer();
-	}
 }
 
 int MaTcpAgent::command ( int argc, const char*const* argv )
@@ -346,7 +314,7 @@ void MaTcpAgent::setSendTimer()
 	// 			3288 + 1240 = 4528
 	//double data = 24 + 256 + 256 + 2496 + 256;
 	//double ack	= 24 + 256 + 256 + 448  + 256;
-	static double time = 1 / 1000000; //initialize to 6ms
+	static double time = 1 / 1000000;
 	
 	if (minSendTime_ > 100.0) // first time
 	{

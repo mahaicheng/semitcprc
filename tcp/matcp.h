@@ -56,15 +56,6 @@
 
 class MaTcpAgent;
 
-class TcpBackoffTimer : public TimerHandler
-{
-public:
-	TcpBackoffTimer(MaTcpAgent *a) : a_(a){ }
-private:
-	virtual void expire(Event *e);
-	MaTcpAgent *a_;
-};
-
 class TcpSendTimer : public TimerHandler
 {
 public:
@@ -76,17 +67,12 @@ private:
 
 class MaTcpAgent : public TcpAgent
 {
-	friend class TcpBackoffTimer;
 	friend class TcpSendTimer;
 	
 public:
         MaTcpAgent();
 		virtual void recv(Packet*, Handler*);
         int command(int argc, const char*const* argv);
-		void setBackoffTimer()
-		{
-			backoffTimer_.resched((Random::random()%cw_ + 1)*timeslot_);
-		}
 		void setSendTimer();
 		double sendTime_;
 		double minSendTime_;
@@ -95,18 +81,11 @@ protected:
         virtual void timeout(int tno);
 		virtual void dupack_action();
 		virtual void send_one();
-		virtual void send_much(int force, int reason, int maxburst = 0);
-		void backoff_timeout();
-
-		void incr_cw() {cw_ <<= 1; if (cw_ < 0)  cw_ = (1 << 30);}
-		void decr_cw() {cw_ >>= 1; if (cw_ < 1)  cw_ = 1;}
-		void reset_cw(){cw_ = 31;}
-		
+		virtual void send_much(int force, int reason, int maxburst = 0);	
 		void send_timeout();
 		
 private:
         Mac802_11* p_to_mac;
-        TcpBackoffTimer backoffTimer_;
 		TcpSendTimer sendTimer_;
 		bool needRetransmit;
 		
@@ -121,8 +100,5 @@ private:
 		int underFlowCount;
 		int notChangeTimeCount;
 		// end of debug
-		
-		int cw_;
-		double timeslot_;
 };
 #endif

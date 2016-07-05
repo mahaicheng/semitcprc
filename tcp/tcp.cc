@@ -1360,6 +1360,7 @@ void TcpAgent::newack(Packet* pkt)
 				rtt_update(now - rtt_ts_);
 		}
 	}
+
 	if (timerfix_) newtimer(pkt);
 	/* update average window */
 	awnd_ *= 1.0 - wnd_th_;

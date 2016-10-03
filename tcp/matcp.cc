@@ -133,10 +133,16 @@ void MaTcpAgent::recv(Packet *pkt, Handler *h)
 	 */
 	//if (valid_ack || aggressive_maxburst_)
 		//send_much(0, 0, maxburst_);
+		
+	if (sendTimer_.status() == TIMER_IDLE)
+	{
+		setSendTimer();
+	}
 }
 
 void MaTcpAgent::send_much(int force, int reason, int maxburst)
 {
+	static const int unacked_size = 128;
 	send_idle_helper();
 
 	delsnd_timer_.force_cancel();
@@ -144,13 +150,18 @@ void MaTcpAgent::send_much(int force, int reason, int maxburst)
 	/* Save time when first packet was sent, for newreno  --Allman */
 	if (t_seqno_ == 0)
 		firstsent_ = Scheduler::instance().clock();
-
-	if (t_seqno_ < curseq_) {
+	
+	// 有缓存限制,如果发送不出去
+	if (t_seqno_ < curseq_ && (t_seqno_ - highest_ack_) < unacked_size) {
 			output(t_seqno_, reason);
 			if (QOption_)
 				process_qoption_after_send () ; 
 			t_seqno_ ++ ;
 	}
+	/*else
+	{
+		printf("unable to send a packet!!!\n");
+	}*/
 		
 	/* call helper function */
 	send_helper(maxburst);
@@ -158,6 +169,9 @@ void MaTcpAgent::send_much(int force, int reason, int maxburst)
 
 void MaTcpAgent::send_timeout()
 {
+	if (p_to_mac->local_congested())
+		return;
+	
 	if (needRetransmit)
 	{
 		retransmitCount++;
@@ -321,13 +335,13 @@ void MaTcpAgent::setSendTimer()
 		sendTimer_.resched(1 / 1000000);
 	}
 	else
-	{
-		if (sendTime_ > minSendTime_ * 1.8)
+	{ 	// 1.7 和1.8是论文中设定的值
+		if (sendTime_ > minSendTime_ * 1.7)
 		{
 			incrTimeCount++;
 			time += 0.00001; 	// decrease sending rate
 		}
-		else if (sendTime_ < minSendTime_ * 1.7)
+		else if (sendTime_ < minSendTime_ * 1.6)
 		{
 			decrTimeCount++;
 			time -= 0.00005; 	// increase sending rate

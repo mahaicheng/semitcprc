@@ -209,6 +209,8 @@ Mac802_11::Mac802_11() :
 	minSendTime_(100000.0),
 	sendingDataSeqno_(-1),
 	receiveTime_(0.0),
+	totalTime_(0.0),
+	totalCount_(0),
 	nb_congested(-1.0),
 	kk(0),
 	KK(2),
@@ -317,11 +319,17 @@ printf("        ACK_send:\t%d\n\n", ACK_send);
 
 printf("   RetransmitRTS:\t%d\n", macmib_.RTSFailureCount);
 printf("  RetransmitDATA:\t%d\n", macmib_.ACKFailureCount);
-printf("      RTS Droped:\t%d\n", RTS_drop);
-printf("     DATA Droped:\t%d\n\n", macmib_.FailedCount);
+printf("      RTS droped:\t%d\n", RTS_drop);
+printf("     DATA droped:\t%d\n\n", macmib_.FailedCount);
 
 printf("  refuse(no CTS):\t%d\n", refuse_other_rts);
 printf(" dead_lock(CTSC):\t%d\n\n", dead_lock);
+
+if (totalCount_ > 0) 	// 目的节点不需要此信息
+{
+printf("minSendTime:\t%.2f　mS\n", minSendTime_*1000);
+printf("avgSendTime:\t%.2f　mS\n\n", totalTime_*1000 / totalCount_);
+}
 
 double RTS_fail_rate = 0.0;
 double RTS_refuse_rate = 0.0;
@@ -680,6 +688,8 @@ Mac802_11::tx_resume()
 		/*
 		 *  Need to send a CTS or ACK.
 		 */
+		if (mhDefer_.busy())
+			mhDefer_.stop();
 		mhDefer_.start(phymib_.getSIFS());
 	} else if(pktRTS_) {
 		if (mhBackoff_.busy() == 0) {
@@ -1145,6 +1155,7 @@ Mac802_11::sendRTS(int dst)
 	 *  If the size of the packet is larger than the
 	 *  RTSThreshold, then perform the RTS/CTS exchange.
 	 */
+
 	if( (u_int32_t) HDR_CMN(pktTx_)->size() < macmib_.getRTSThreshold() ||
             (u_int32_t) dst == MAC_BROADCAST) {
 		Packet::free(p);    //put this section in the front of this function is better
@@ -2087,6 +2098,8 @@ Mac802_11::recvACK(Packet *p)
 			{
 				avgSendTime_ = avgSendTime_ * 0.875 + interval * 0.125;
 			}
+			totalTime_ += interval;
+			++totalCount_;
 		}
 	}
 	

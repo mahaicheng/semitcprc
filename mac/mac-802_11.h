@@ -296,6 +296,8 @@ public:
 		double minSendTime_;
 		int sendingDataSeqno_;
 		double receiveTime_;
+		double totalTime_;
+		int totalCount_;
 
 protected:
 	void	backoffHandler(void);

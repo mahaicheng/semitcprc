@@ -336,20 +336,21 @@ void MaTcpAgent::setSendTimer()
 	}
 	else
 	{ 	// 1.7 和1.8是论文中设定的值
-		if (sendTime_ > minSendTime_ * 1.7)
+		if (sendTime_ > minSendTime_ * 2.0)
 		{
 			incrTimeCount++;
-			time += 0.00001; 	// decrease sending rate
+			time += 0.00005; 	// decrease sending rate. origin = 0.00001
 		}
-		else if (sendTime_ < minSendTime_ * 1.6)
+		else if (sendTime_ < minSendTime_ * 1.9)
 		{
-			decrTimeCount++;
-			time -= 0.00005; 	// increase sending rate
-			
-			if (time < 0)
+			if (time >= 0.00005)
 			{
-				time += 0.00005;
-				underFlowCount++;
+			decrTimeCount++;
+			time -= 0.00005; 	// increase sending rate. origin = 0.00005
+			}
+			else
+			{
+				underFlowCount++;				
 			}
 		}
 		else

@@ -346,7 +346,7 @@ void MaTcpAgent::setSendTimer()
 			if (time >= 0.00005)
 			{
 			decrTimeCount++;
-			time -= 0.00005; 	// increase sending rate. origin = 0.00005
+			time -= 0.00005; 	// increase sending rate. 
 			}
 			else
 			{

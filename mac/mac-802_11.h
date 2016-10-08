@@ -50,6 +50,9 @@
 
 #include <string>
 #include <map>
+#include<vector>
+#include<stdio.h>
+
 #include "priqueue.h"
 #include "dsr-priqueue.h"
 #include "aodv/aodv.h"
@@ -298,6 +301,7 @@ public:
 		double receiveTime_;
 		double totalTime_;
 		int totalCount_;
+		std::vector<std::pair<double, double>> send_time_vec;
 
 protected:
 	void	backoffHandler(void);

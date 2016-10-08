@@ -60,6 +60,7 @@
 
 #ifdef SEMITCP
 #include <iostream> 
+#include<fstream>
 #endif
 
 /* our backoff timer doesn't count down in idle times during a
@@ -361,6 +362,11 @@ printf(" RTS_refuse_rate:\t%.2f%%\n", RTS_refuse_rate * 100.0);
 printf("    RTS_CTS_rate:\t%.2f%%\n", RTS_CTS_rate * 100.0);
 printf("  DATA_fail_rate:\t%.2f%%\n", DATA_fail_rate * 100.0);
 printf("all_success_rate:\t%.2f%%\n\n", all_success_rate * 100.0);
+
+for (const auto &pr : send_time_vec)
+{
+	fprintf(stdout, "send_time_vec:\t%.6f\t%.6f\n", pr.first, pr.second*1000);
+}
 
 	return TCL_OK;
     }   
@@ -2096,6 +2102,8 @@ Mac802_11::recvACK(Packet *p)
 			else
 			{
 				avgSendTime_ = avgSendTime_ * 0.875 + interval * 0.125;
+				double now = Scheduler::instance().clock();
+				send_time_vec.push_back(std::make_pair(now, avgSendTime_));
 			}
 			totalTime_ += interval;
 			++totalCount_;

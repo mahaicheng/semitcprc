@@ -57,7 +57,9 @@ Packet* PacketQueue::deque()
     if(p == tail_)
         head_= tail_= NULL;
 		
-        --len_;
+        --len_;	
+		RecordStatus(How::decr);
+	
         bytes_ -= hdr_cmn::access(p)->size();
     
         return p;
@@ -73,7 +75,10 @@ void PacketQueue::remove(Packet* target)
 					tail_= pp;
 				
 				pp->next_= p->next_;
+				
 				--len_;
+				RecordStatus(How::decr);
+				
 				bytes_ -= hdr_cmn::access(p)->size();
 			}
 			return;
@@ -96,7 +101,10 @@ void PacketQueue::remove(Packet* pkt, Packet *prev) //XXX: screwy
 			prev->next_ = pkt->next_;
 			if (tail_ == pkt)
 				tail_ = prev;
+			
 			--len_;
+			RecordStatus(How::decr);
+			
 			bytes_ -= hdr_cmn::access(pkt)->size();
 		}
 	}

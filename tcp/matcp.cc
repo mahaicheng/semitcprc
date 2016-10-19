@@ -339,14 +339,14 @@ void MaTcpAgent::setSendTimer()
 		if (sendTime_ > minSendTime_ * 2.0)
 		{
 			incrTimeCount++;
-			time += 0.00005; 	// decrease sending rate. origin = 0.00001
+			time += 0.00001; 	// decrease sending rate. origin = 0.00001
 		}
 		else if (sendTime_ < minSendTime_ * 1.9)
 		{
-			if (time >= 0.00005)
+			if (time >= 0.00001)
 			{
 			decrTimeCount++;
-			time -= 0.00005; 	// increase sending rate. 
+			time -= 0.00001; 	// increase sending rate. 
 			}
 			else
 			{

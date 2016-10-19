@@ -51,6 +51,7 @@
 #include <string>
 #include <map>
 #include<vector>
+#include<unordered_map>
 #include<stdio.h>
 
 #include "priqueue.h"
@@ -411,6 +412,63 @@ private:
 	AODV* p_aodv_agent;
 	PriQueue* p_to_prique;
 	
+	double prev_time_;
+	double start_time;
+	double end_time;
+	std::unordered_map<int, std::vector<double>> intervals;
+	
+	void RecordStatus(How how)
+	{
+		double now = Scheduler::instance().clock();
+		if (start_time < 0.0)
+			start_time = now;
+		end_time = now;
+		
+		int prev_len = 0;
+		if (how == How::incr)
+		{
+			prev_len = 0;
+		}
+		else
+		{
+			prev_len = 1;
+		}
+		
+		if (prev_len <= 0)
+			return;
+		
+		if (intervals.find(prev_len) == intervals.end())
+		{
+			intervals[prev_len] = std::vector<double>();
+		}
+		
+		double interval = now - prev_time_;
+		prev_time_ = now;
+		intervals[prev_len].push_back(interval);				
+	}
+	
+    double avg_length() const
+	{ 
+		if (intervals.empty())
+			return 0.0;
+		
+		double total_len = 0.0;
+		for (auto pr : intervals)
+		{
+			int queue_len = pr.first;
+			vector<double> interval_vec = pr.second;
+			
+			if (queue_len <= 0 || interval_vec.empty())
+				continue;
+			
+			for (auto d : interval_vec)
+			{
+				total_len += (queue_len * d);
+			}
+		}
+		return total_len / (end_time - start_time);
+    }	
+	
 /*******MHC DEBUG************/
  
     int refuse_other_rts;
@@ -430,10 +488,13 @@ private:
 	
 	int RTS_drop;
 	
-	double avg_whole;
-	int max_whole;
-	void statistics();
-       
+	int forward_data_send;
+	int backward_ack_send;
+	int forward_data_retransmit;
+	int backward_ack_retransmit;
+	int forward_data_drop;
+	int backward_ack_drop;
+	       
 /*******MHC DEBUG***********/
 #endif
 

@@ -295,6 +295,8 @@ public:
         void trace_event(char *, Packet *);
         EventTrace *et_;
 		size_t maxAckQueueSize_;
+		
+		// record average send time
 		double avgSendTime_;
 		double maxSendTime_;
 		double minSendTime_;
@@ -303,6 +305,9 @@ public:
 		double totalTime_;
 		int totalCount_;
 		std::vector<std::pair<double, double>> send_time_vec;
+		
+		// RTS_Data_ratio
+		double RTS_Data_ratio;
 
 protected:
 	void	backoffHandler(void);
@@ -413,6 +418,7 @@ private:
 	AODV* p_aodv_agent;
 	PriQueue* p_to_prique;
 	
+	// record queue length
 	double prev_time_;
 	double start_time;
 	double end_time;

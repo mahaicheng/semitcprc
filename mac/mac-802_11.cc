@@ -90,13 +90,13 @@ Mac802_11::checkBackoffTimer()
 		mhBackoff_.pause();
 	
 	// Inter nodes do not have the following process
-	if (!local_congested() && p_to_tcp != nullptr)
+	/*if (!local_congested() && p_to_tcp != nullptr)
 	{
 		//p_to_tcp->setBackoffTimer();
 		p_to_tcp->setSendTimer();
 		p_to_tcp->sendTime_ = avgSendTime_;
 		p_to_tcp->minSendTime_ = minSendTime_;
-	}
+	}*/
 }
 
 inline void

@@ -63,6 +63,8 @@
 #include<fstream>
 #endif
 
+static const int SAMPLE_COUNT = 20;
+
 /* our backoff timer doesn't count down in idle times during a
  * frame-exchange sequence as the mac tx state isn't idle; genreally
  * these idle times are less than DIFS and won't contribute to
@@ -88,15 +90,6 @@ Mac802_11::checkBackoffTimer()
 		mhBackoff_.resume(phymib_.getDIFS());
 	if(! is_idle() && mhBackoff_.busy() && ! mhBackoff_.paused())
 		mhBackoff_.pause();
-	
-	// Inter nodes do not have the following process
-	/*if (!local_congested() && p_to_tcp != nullptr)
-	{
-		//p_to_tcp->setBackoffTimer();
-		p_to_tcp->setSendTimer();
-		p_to_tcp->sendTime_ = avgSendTime_;
-		p_to_tcp->minSendTime_ = minSendTime_;
-	}*/
 }
 
 inline void
@@ -208,6 +201,9 @@ Mac802_11::Mac802_11() :
 	receiveTime_(0.0),
 	totalTime_(0.0),
 	totalCount_(0),
+	RTS_DATA_ratio(0.0),
+	RTS_count(0),
+	DATA_count(0),
 	nb_congested(-1.0),
 	kk(0),
 	KK(2),
@@ -373,9 +369,14 @@ printf("forward_data_retransmit_rate:\t%.2f%%\n", forward_data_retransmit_rate *
 printf("RTS_drop_rate:\t%.2f%%\n", RTS_drop_rate * 100.0);
 printf("forward_data_drop_rate:\t%.2f%%\n\n", forward_data_drop_rate * 100.0);
 
-for (const auto &pr : send_time_vec)
+/*for (const auto &pr : send_time_vec)
 {
 	fprintf(stdout, "send_time_vec:\t%.6f\t%.6f\n", pr.first, pr.second*1000);
+}*/
+
+for (const auto &pr : RTS_ratio_vec)
+{
+	fprintf(stdout, "RTS_ratio_vec:\t%.6f\t%.6f\n", pr.first, pr.second);
 }
 
 	return TCL_OK;
@@ -1079,6 +1080,7 @@ Mac802_11::check_pktRTS()
 		mh->dh_fc.fc_order = true;///RTSC
 
 	RTS_send++;
+	RTS_count++;
 #endif
 	transmit(pktRTS_, timeout);
 	return 0;
@@ -2062,9 +2064,6 @@ Mac802_11::recvACK(Packet *p)
 	assert(pktTx_);
 
 #ifdef SEMITCP
-	const double now = Scheduler::instance().clock();
-
-	
 	if ( nbs.find( RECEIVER(pktTx_) ) == nbs.end() ) {
 		nbs[ RECEIVER(pktTx_) ] = new Neighbour (SENDER(p));
 	}
@@ -2074,6 +2073,8 @@ Mac802_11::recvACK(Packet *p)
 	if(nb->get_helped_by_me()) {
 		nb->set_helped_by_me(false);
 	}
+	
+	const double now = Scheduler::instance().clock();	
 	if(nb->get_helped_time() > 0.0) {
 		nb->set_helped_time(now);
 		nb_congested = now;
@@ -2131,6 +2132,20 @@ Mac802_11::recvACK(Packet *p)
 	RecordStatus(How::decr);
 #ifdef SEMITCP
 	ACK_recv++;
+	
+	DATA_count++;
+	if (DATA_count >= SAMPLE_COUNT && p_to_tcp != nullptr)
+	{
+		RTS_DATA_ratio = RTS_count * 1.0 / DATA_count;
+		p_to_tcp->RTS_DATA_ratio = RTS_DATA_ratio;
+		p_to_tcp->AdjustSendRate();
+		
+		double now = Scheduler::instance().clock();
+		RTS_ratio_vec.push_back(std::make_pair(now, RTS_DATA_ratio));
+		// reflash the RTS and DATA statistics
+		RTS_count = 0;
+		DATA_count = 0;
+	}
 #endif
 	/*
 	 * Backoff before sending again.

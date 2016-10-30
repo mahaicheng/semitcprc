@@ -47,6 +47,11 @@
 
 using namespace std;
 
+static const double INITIAL_SEND_RATE = 100000; 	//100Kbps
+static const int CONVERT_THRESHOLD = 7;
+static const int SAMPLE_COUNT = 10;
+static const double elips = 1.0;
+
 void TcpSendTimer::expire(Event* e)
 {
 	a_->send_timeout();
@@ -62,10 +67,15 @@ public:
 } class_semi;
 
 MaTcpAgent::MaTcpAgent() : 
-			sendTime_(0.0),
-			minSendTime_(10000.0),
+			RTS_DATA_ratio(0.0),
+			min_RTS_DATA_ratio(1.4),
+			max_RTS_DATA_ratio(1.8),
 			p_to_mac(nullptr),
 			sendTimer_(this),
+			top_send_rate(0.0),
+			bottom_send_rate(0.0),
+			curr_send_rate(INITIAL_SEND_RATE),
+			curr_status(TCPStatus::SLOW_START),
 			needRetransmit(false),
 			congestedCount(0),
 			retryCount(0),
@@ -75,7 +85,8 @@ MaTcpAgent::MaTcpAgent() :
 			incrTimeCount(0),
 			decrTimeCount(0),
 			underFlowCount(0),
-			notChangeTimeCount(0)
+			notChangeTimeCount(0),
+			hit_the_max_send_rate(false)
 { 
 	
 }
@@ -133,11 +144,149 @@ void MaTcpAgent::recv(Packet *pkt, Handler *h)
 	 */
 	//if (valid_ack || aggressive_maxburst_)
 		//send_much(0, 0, maxburst_);
-		
-	if (sendTimer_.status() == TIMER_IDLE)
+}
+
+double MaTcpAgent::Abs(double d) const
+{
+	if (d < 0.0)
 	{
-		setSendTimer();
+		d = -d;
 	}
+	return d;
+}
+
+
+void MaTcpAgent::AdjustSendRate()
+{
+	static deque<double> buffer;
+	static int below_count = 0, above_count = 0, inner_count = 0;
+	
+	buffer.push_back(RTS_DATA_ratio);
+	if (RTS_DATA_ratio < min_RTS_DATA_ratio)
+	{
+		below_count++;
+	}
+	else if (RTS_DATA_ratio < max_RTS_DATA_ratio)
+	{
+		inner_count++;
+	}
+	else
+	{
+		above_count++;
+	}
+
+	if (buffer.size() > SAMPLE_COUNT)
+	{
+		double oldest = buffer.front();
+		buffer.pop_front();
+		if (oldest < min_RTS_DATA_ratio)
+		{
+			below_count--;
+		}
+		else if (oldest < max_RTS_DATA_ratio)
+		{
+			inner_count--;
+		}
+		else
+		{
+			above_count--;
+		}
+	}	
+	
+	double now = Scheduler::instance().clock();
+	if (now > 1.0)
+	{
+		if (curr_status == TCPStatus::SLOW_START)
+		{
+			fprintf(stderr, "SLOW_START---RTS_DATA_ratio:\t%.2f\ncurr:\t%.2f\ttop:\t%.2f\tbottom:\t%.2f\n",\
+					RTS_DATA_ratio, curr_send_rate/1000.0, top_send_rate/1000.0, bottom_send_rate/1000.0);		}
+		else if (curr_status == TCPStatus::SEARCHING)
+		{
+			fprintf(stderr, "SEARCHING----RTS_DATA_ratio:\t%.2f\ncurr:\t%.2f\ttop:\t%.2f\tbottom:\t%.2f\n",\
+					RTS_DATA_ratio, curr_send_rate/1000.0, top_send_rate/1000.0, bottom_send_rate/1000.0);
+		}
+		else
+		{
+			fprintf(stderr, "STABLE-------RTS_DATA_ratio:\t%.2f\ncurr:\t%.2f\ttop:\t%.2f\tbottom:\t%.2f\n",\
+					RTS_DATA_ratio, curr_send_rate/1000.0, top_send_rate/1000.0, bottom_send_rate/1000.0);		}
+	}
+	
+	/*if (hit_the_max_send_rate)
+	{
+		curr_status = TCPStatus::SEARCHING;
+		curr_send_rate = INITIAL_SEND_RATE;
+		return; //process the special situation where there is only one hop.
+	}*/
+	
+	if (curr_status == TCPStatus::SLOW_START)
+	{
+		if (RTS_DATA_ratio < min_RTS_DATA_ratio)
+		{
+			curr_send_rate *= 2;
+		}
+		else if (RTS_DATA_ratio < max_RTS_DATA_ratio && inner_count > CONVERT_THRESHOLD)
+		{
+			curr_status = TCPStatus::STABLE;
+		}
+		else
+		{
+			curr_status = TCPStatus::SEARCHING;
+			top_send_rate = curr_send_rate;
+			bottom_send_rate = curr_send_rate / 2;			
+		}
+	}
+	else if (curr_status == TCPStatus::SEARCHING)
+	{
+		if (RTS_DATA_ratio < min_RTS_DATA_ratio)
+		{
+			if (Abs(curr_send_rate - top_send_rate) < elips)
+			{
+				curr_status = TCPStatus::SLOW_START;
+				//curr_send_rate /= 2;
+			}
+			else
+			{
+				bottom_send_rate = curr_send_rate;				
+				curr_send_rate = (curr_send_rate + top_send_rate) / 2;
+			}
+		}
+		else if (RTS_DATA_ratio < max_RTS_DATA_ratio && inner_count > CONVERT_THRESHOLD)
+		{
+			curr_status = TCPStatus::STABLE;
+		}
+		else
+		{
+			if (Abs(curr_send_rate - bottom_send_rate) < elips)
+			{
+				curr_status = TCPStatus::SLOW_START;
+				//curr_send_rate /= 2;
+			}
+			else
+			{
+				top_send_rate = curr_send_rate;
+				curr_send_rate = (curr_send_rate + bottom_send_rate) / 2;
+			}
+		}
+	}
+	else 	// curr_status == TCPStatus::STABLE
+	{
+		if (below_count > CONVERT_THRESHOLD)
+		{
+			curr_status = TCPStatus::SLOW_START;
+			//curr_send_rate /= 2;
+		}
+		else if (above_count > CONVERT_THRESHOLD)
+		{
+			curr_status = TCPStatus::SEARCHING;
+			top_send_rate = curr_send_rate;
+			bottom_send_rate = curr_send_rate / 2;			
+		}
+	}
+}
+
+double MaTcpAgent::ConvertToTimeInterval(double send_rate) const
+{
+	return (8.0 * size_ / send_rate);
 }
 
 void MaTcpAgent::send_much(int force, int reason, int maxburst)
@@ -158,19 +307,70 @@ void MaTcpAgent::send_much(int force, int reason, int maxburst)
 				process_qoption_after_send () ; 
 			t_seqno_ ++ ;
 	}
-	/*else
-	{
-		printf("unable to send a packet!!!\n");
-	}*/
 		
 	/* call helper function */
 	send_helper(maxburst);
+	if (sendTimer_.status() == TIMER_IDLE)
+	{
+		double interval = ConvertToTimeInterval(curr_send_rate);
+		sendTimer_.resched(interval);
+	}
 }
 
-void MaTcpAgent::send_timeout()
+enum class STATUS
 {
-	if (p_to_mac->local_congested())
-		return;
+	CAN_SEND,
+	CAN_NOT_SEND
+};
+
+void MaTcpAgent::send_timeout()
+{	
+	static deque<STATUS> buffer;
+	static const int STATUS_SIZE = 10;
+	static const int CAN_NOT_SEND_THRESHOLD = 7;
+	static int can_not_send_count = 0;
+	
+	double interval = ConvertToTimeInterval(curr_send_rate);	
+	bool can_send = false;
+	if (p_to_mac->TotalCongested())
+	{
+		//fprintf(stderr, "can not send\n");
+		buffer.push_back(STATUS::CAN_NOT_SEND);
+		can_not_send_count++;
+		sendTimer_.resched(interval);		
+		can_send = false;
+	}
+	else
+	{
+		//fprintf(stderr, "can send\n");
+		buffer.push_back(STATUS::CAN_SEND);
+		can_send = true;
+	}
+	
+	if (buffer.size() > STATUS_SIZE)
+	{
+		auto oldest = buffer.front();
+		buffer.pop_front();
+		if (oldest == STATUS::CAN_NOT_SEND)
+		{
+			can_not_send_count--;
+		}
+	}
+	
+	//fprintf(stderr, "can_not_send_count:\t%d\n", can_not_send_count);
+	if (can_not_send_count > CAN_NOT_SEND_THRESHOLD)
+	{
+		hit_the_max_send_rate = true;
+	}
+	else
+	{
+		hit_the_max_send_rate = false;
+	}
+	
+	if (!can_send)
+	{
+		return; 	// if can not send, just return
+	}
 	
 	if (needRetransmit)
 	{
@@ -180,10 +380,9 @@ void MaTcpAgent::send_timeout()
 	}
 	else
 	{
-		send_much(1, 0, 1);
+		send_much(1, 0, 1); 	// send a new packet
 	}
-	// Do not need to reschedule sendTimer. MAC will reschedule it.
-	//reset_cw();
+	sendTimer_.resched(interval);
 }
 
 int MaTcpAgent::command ( int argc, const char*const* argv )
@@ -200,7 +399,9 @@ int MaTcpAgent::command ( int argc, const char*const* argv )
         }
         else if (argc == 2 && strcmp(argv[1], "emptyCount") == 0)
 		{
-			fprintf(stderr, "maxRetryCount:\t\t%d\n", maxRetryCount);
+			return TCL_OK; 	// nothing to do
+			
+			/*fprintf(stderr, "maxRetryCount:\t\t%d\n", maxRetryCount);
 			fprintf(stderr, "congestedCount:\t\t%d\n", congestedCount);
 			fprintf(stderr, "notCongestedCount:\t%d\n", notCongestedCount);
 			fprintf(stderr, "retransmitCount:\t%d\n\n", retransmitCount);
@@ -210,8 +411,8 @@ int MaTcpAgent::command ( int argc, const char*const* argv )
 			fprintf(stderr, "     incrTimeCount:\t%d\n", incrTimeCount);
 			fprintf(stderr, "     decrTimeCount:\t%d\n", decrTimeCount);
 			fprintf(stderr, "    underFlowCount:\t\t%d\n", underFlowCount);
-			fprintf(stderr, "notChangeTimeCount:\t%d\n\n", notChangeTimeCount);
-			return TCL_OK;
+			fprintf(stderr, "notChangeTimeCount:\t%d\n\n", notChangeTimeCount);*/
+			//return TCL_OK;
 		}
         return TcpAgent::command ( argc, argv );
 }
@@ -320,44 +521,4 @@ tahoe_action:
 void MaTcpAgent::send_one()
 {
 	// nothing to do
-}
-
-void MaTcpAgent::setSendTimer()
-{
-	//        3*sifs + rts + cts + data + ack
-	// 			3288 + 1240 = 4528
-	//double data = 24 + 256 + 256 + 2496 + 256;
-	//double ack	= 24 + 256 + 256 + 448  + 256;
-	static double time = 1 / 1000000;
-	
-	if (minSendTime_ > 100.0) // first time
-	{
-		sendTimer_.resched(1 / 1000000);
-	}
-	else
-	{ 	// 1.7 和1.8是论文中设定的值
-		if (sendTime_ > minSendTime_ * 2.0)
-		{
-			incrTimeCount++;
-			time += 0.00001; 	// decrease sending rate. origin = 0.00001
-		}
-		else if (sendTime_ < minSendTime_ * 1.9)
-		{
-			if (time >= 0.00001)
-			{
-			decrTimeCount++;
-			time -= 0.00001; 	// increase sending rate. 
-			}
-			else
-			{
-				underFlowCount++;				
-			}
-		}
-		else
-		{
-			notChangeTimeCount++;
-		}
-			
-		sendTimer_.resched(time);
-	}
 }

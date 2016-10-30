@@ -307,7 +307,10 @@ public:
 		std::vector<std::pair<double, double>> send_time_vec;
 		
 		// RTS_Data_ratio
-		double RTS_Data_ratio;
+		double RTS_DATA_ratio;
+		int RTS_count;
+		int DATA_count;
+		std::vector<std::pair<double, double>> RTS_ratio_vec;		
 
 protected:
 	void	backoffHandler(void);

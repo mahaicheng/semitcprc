@@ -65,6 +65,13 @@ private:
 	MaTcpAgent *a_;
 };
 
+enum class TCPStatus
+{
+	SLOW_START,
+	SEARCHING,
+	STABLE
+};
+
 class MaTcpAgent : public TcpAgent
 {
 	friend class TcpSendTimer;
@@ -73,20 +80,30 @@ public:
         MaTcpAgent();
 		virtual void recv(Packet*, Handler*);
         int command(int argc, const char*const* argv);
-		void setSendTimer();
-		double sendTime_;
-		double minSendTime_;
+		void AdjustSendRate();
+	
+        double RTS_DATA_ratio;
+		double min_RTS_DATA_ratio;
+		double max_RTS_DATA_ratio;
 
 protected:
         virtual void timeout(int tno);
 		virtual void dupack_action();
 		virtual void send_one();
-		virtual void send_much(int force, int reason, int maxburst = 0);	
+		virtual void send_much(int force, int reason, int maxburst = 0);
 		void send_timeout();
+		double ConvertToTimeInterval(double send_rate) const;
+		double Abs(double d) const;
 		
 private:
         Mac802_11* p_to_mac;
 		TcpSendTimer sendTimer_;
+		
+		double top_send_rate;
+		double bottom_send_rate;
+		double curr_send_rate;
+		TCPStatus curr_status;
+		
 		bool needRetransmit;
 		
 		// debug
@@ -99,6 +116,7 @@ private:
 		int decrTimeCount;
 		int underFlowCount;
 		int notChangeTimeCount;
+        bool hit_the_max_send_rate;
 		// end of debug
 };
 #endif

@@ -68,8 +68,8 @@ public:
 
 MaTcpAgent::MaTcpAgent() : 
 			RTS_DATA_ratio(0.0),
-			min_RTS_DATA_ratio(1.4),
-			max_RTS_DATA_ratio(1.8),
+			min_RTS_DATA_ratio(1.8),
+			max_RTS_DATA_ratio(2.2),
 			p_to_mac(nullptr),
 			sendTimer_(this),
 			top_send_rate(0.0),
@@ -211,12 +211,14 @@ void MaTcpAgent::AdjustSendRate()
 					RTS_DATA_ratio, curr_send_rate/1000.0, top_send_rate/1000.0, bottom_send_rate/1000.0);		}
 	}
 	
-	/*if (hit_the_max_send_rate)
+	if (hit_the_max_send_rate)
 	{
 		curr_status = TCPStatus::SEARCHING;
-		curr_send_rate = INITIAL_SEND_RATE;
-		return; //process the special situation where there is only one hop.
-	}*/
+		top_send_rate = curr_send_rate;
+		bottom_send_rate = curr_send_rate / 2;
+		curr_send_rate /= 2;
+		return;
+	}
 	
 	if (curr_status == TCPStatus::SLOW_START)
 	{
@@ -326,8 +328,8 @@ enum class STATUS
 void MaTcpAgent::send_timeout()
 {	
 	static deque<STATUS> buffer;
-	static const int STATUS_SIZE = 10;
-	static const int CAN_NOT_SEND_THRESHOLD = 7;
+	static const int STATUS_SIZE = 20;
+	static const int CAN_NOT_SEND_THRESHOLD = 5;
 	static int can_not_send_count = 0;
 	
 	double interval = ConvertToTimeInterval(curr_send_rate);	

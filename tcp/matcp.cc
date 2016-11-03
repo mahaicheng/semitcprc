@@ -51,6 +51,8 @@ static const double INITIAL_SEND_RATE = 100000; 	//100Kbps
 static const int CONVERT_THRESHOLD = 7;
 static const int SAMPLE_COUNT = 10;
 static const double elips = 1.0;
+static const double MIN_RTS_DATA_RATIO = 1.8;
+static const double MAX_RTS_DATA_RATIO = 2.2;
 
 void TcpSendTimer::expire(Event* e)
 {
@@ -68,8 +70,6 @@ public:
 
 MaTcpAgent::MaTcpAgent() : 
 			RTS_DATA_ratio(0.0),
-			min_RTS_DATA_ratio(1.8),
-			max_RTS_DATA_ratio(2.2),
 			p_to_mac(nullptr),
 			sendTimer_(this),
 			top_send_rate(0.0),
@@ -87,8 +87,31 @@ MaTcpAgent::MaTcpAgent() :
 			underFlowCount(0),
 			notChangeTimeCount(0),
 			hit_the_max_send_rate(false)
-{ 
+{
+	/*Tcl &tcl = Tcl::instance();
 	
+	tcl.evalf("Agent/TCP/Semi set min_RTS_DATA_ratio");
+	if (strcmp(tcl.result(), "0") != 0)
+	{
+		bind("min_RTS_DATA_ratio", &min_RTS_DATA_ratio);
+	}
+	else
+	{
+		min_RTS_DATA_ratio = MIN_RTS_DATA_RATIO;
+	}
+	
+	tcl.evalf("Agent/TCP/Semi set max_RTS_DATA_ratio");
+	if (strcmp(tcl.result(), "0") != 0)
+	{
+		bind("max_RTS_DATA_ratio", &max_RTS_DATA_ratio);
+	}
+	else
+	{
+		max_RTS_DATA_ratio = MAX_RTS_DATA_RATIO;
+	}*/
+	
+	bind("min_RTS_DATA_ratio", &min_RTS_DATA_ratio);
+	bind("max_RTS_DATA_ratio", &max_RTS_DATA_ratio);
 }
 
 void MaTcpAgent::recv(Packet *pkt, Handler *h)
@@ -196,6 +219,7 @@ void MaTcpAgent::AdjustSendRate()
 	double now = Scheduler::instance().clock();
 	if (now > 1.0)
 	{
+		//fprintf(stderr, "min_RTS_DATA_ratio:\t%.2f\tmax_RTS_DATA_ratio:\t%.2f\n", min_RTS_DATA_ratio, max_RTS_DATA_ratio);
 		if (curr_status == TCPStatus::SLOW_START)
 		{
 			fprintf(stderr, "SLOW_START---RTS_DATA_ratio:\t%.2f\ncurr:\t%.2f\ttop:\t%.2f\tbottom:\t%.2f\n",\

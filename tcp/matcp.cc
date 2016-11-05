@@ -240,8 +240,8 @@ void MaTcpAgent::AdjustSendRate()
 		curr_status = TCPStatus::SEARCHING;
 		top_send_rate = curr_send_rate;
 		bottom_send_rate = curr_send_rate / 2;
-		curr_send_rate /= 2;
-		return;
+		curr_send_rate = (top_send_rate + bottom_send_rate) / 2;
+		return; 	// WARNING: do not forget
 	}
 	
 	if (curr_status == TCPStatus::SLOW_START)
@@ -254,11 +254,16 @@ void MaTcpAgent::AdjustSendRate()
 		{
 			curr_status = TCPStatus::STABLE;
 		}
-		else
+		else if (RTS_DATA_ratio > max_RTS_DATA_ratio)
 		{
 			curr_status = TCPStatus::SEARCHING;
 			top_send_rate = curr_send_rate;
-			bottom_send_rate = curr_send_rate / 2;			
+			bottom_send_rate = curr_send_rate / 2;
+			curr_send_rate = (top_send_rate + bottom_send_rate) / 2;
+		}
+		else
+		{
+			//NOTE: do nothing
 		}
 	}
 	else if (curr_status == TCPStatus::SEARCHING)
@@ -268,7 +273,6 @@ void MaTcpAgent::AdjustSendRate()
 			if (Abs(curr_send_rate - top_send_rate) < elips)
 			{
 				curr_status = TCPStatus::SLOW_START;
-				//curr_send_rate /= 2;
 			}
 			else
 			{
@@ -280,12 +284,12 @@ void MaTcpAgent::AdjustSendRate()
 		{
 			curr_status = TCPStatus::STABLE;
 		}
-		else
+		else if (RTS_DATA_ratio > max_RTS_DATA_ratio)
 		{
 			if (Abs(curr_send_rate - bottom_send_rate) < elips)
 			{
 				curr_status = TCPStatus::SLOW_START;
-				//curr_send_rate /= 2;
+				curr_send_rate /= 2;
 			}
 			else
 			{
@@ -293,19 +297,27 @@ void MaTcpAgent::AdjustSendRate()
 				curr_send_rate = (curr_send_rate + bottom_send_rate) / 2;
 			}
 		}
+		else
+		{
+			// NOTE: do nothing
+		}
 	}
 	else 	// curr_status == TCPStatus::STABLE
 	{
 		if (below_count > CONVERT_THRESHOLD)
 		{
 			curr_status = TCPStatus::SLOW_START;
-			//curr_send_rate /= 2;
 		}
 		else if (above_count > CONVERT_THRESHOLD)
 		{
 			curr_status = TCPStatus::SEARCHING;
 			top_send_rate = curr_send_rate;
-			bottom_send_rate = curr_send_rate / 2;			
+			bottom_send_rate = curr_send_rate / 2;		
+			curr_send_rate = (top_send_rate + bottom_send_rate) / 2;
+		}
+		else
+		{
+			// NOTE: do nothing
 		}
 	}
 }
@@ -353,7 +365,7 @@ void MaTcpAgent::send_timeout()
 {	
 	static deque<STATUS> buffer;
 	static const int STATUS_SIZE = 20;
-	static const int CAN_NOT_SEND_THRESHOLD = 5;
+	static const int CAN_NOT_SEND_THRESHOLD = 10;
 	static int can_not_send_count = 0;
 	
 	double interval = ConvertToTimeInterval(curr_send_rate);	

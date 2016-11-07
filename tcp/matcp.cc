@@ -42,17 +42,17 @@
 #include "tcp.h"
 #include "matcp.h"
 #include"timer-handler.h"
+#include <mac-802_11.h>
 #include <algorithm>
 #include <unistd.h>
 
 using namespace std;
 
-static const double INITIAL_SEND_RATE = 100000; 	//100Kbps
 static const int CONVERT_THRESHOLD = 7;
 static const int SAMPLE_COUNT = 10;
-static const double elips = 1.0;
-static const double MIN_RTS_DATA_RATIO = 1.8;
-static const double MAX_RTS_DATA_RATIO = 2.2;
+static const double elips = 1000.0; 	// 1kbps
+static const double MAX_RATIO = 0.5;
+static const double MIN_RATIO = 0.3;
 
 void TcpSendTimer::expire(Event* e)
 {
@@ -70,12 +70,14 @@ public:
 
 MaTcpAgent::MaTcpAgent() : 
 			RTS_DATA_ratio(0.0),
+			min_send_time(0.0),
+			max_send_rate(0.0),
 			p_to_mac(nullptr),
 			sendTimer_(this),
 			top_send_rate(0.0),
 			bottom_send_rate(0.0),
-			curr_send_rate(INITIAL_SEND_RATE),
-			curr_status(TCPStatus::SLOW_START),
+			curr_send_rate(0.0),
+			curr_status(TCPStatus::SEMI_TCP),
 			needRetransmit(false),
 			congestedCount(0),
 			retryCount(0),
@@ -87,29 +89,7 @@ MaTcpAgent::MaTcpAgent() :
 			underFlowCount(0),
 			notChangeTimeCount(0),
 			hit_the_max_send_rate(false)
-{
-	/*Tcl &tcl = Tcl::instance();
-	
-	tcl.evalf("Agent/TCP/Semi set min_RTS_DATA_ratio");
-	if (strcmp(tcl.result(), "0") != 0)
-	{
-		bind("min_RTS_DATA_ratio", &min_RTS_DATA_ratio);
-	}
-	else
-	{
-		min_RTS_DATA_ratio = MIN_RTS_DATA_RATIO;
-	}
-	
-	tcl.evalf("Agent/TCP/Semi set max_RTS_DATA_ratio");
-	if (strcmp(tcl.result(), "0") != 0)
-	{
-		bind("max_RTS_DATA_ratio", &max_RTS_DATA_ratio);
-	}
-	else
-	{
-		max_RTS_DATA_ratio = MAX_RTS_DATA_RATIO;
-	}*/
-	
+{	
 	bind("min_RTS_DATA_ratio", &min_RTS_DATA_ratio);
 	bind("max_RTS_DATA_ratio", &max_RTS_DATA_ratio);
 }
@@ -178,7 +158,6 @@ double MaTcpAgent::Abs(double d) const
 	return d;
 }
 
-
 void MaTcpAgent::AdjustSendRate()
 {
 	static deque<double> buffer;
@@ -220,46 +199,70 @@ void MaTcpAgent::AdjustSendRate()
 	if (now > 1.0)
 	{
 		//fprintf(stderr, "min_RTS_DATA_ratio:\t%.2f\tmax_RTS_DATA_ratio:\t%.2f\n", min_RTS_DATA_ratio, max_RTS_DATA_ratio);
-		if (curr_status == TCPStatus::SLOW_START)
+		if (curr_status == TCPStatus::SEMI_TCP)
 		{
-			fprintf(stderr, "SLOW_START---RTS_DATA_ratio:\t%.2f\ncurr:\t%.2f\ttop:\t%.2f\tbottom:\t%.2f\n",\
-					RTS_DATA_ratio, curr_send_rate/1000.0, top_send_rate/1000.0, bottom_send_rate/1000.0);		}
+			fprintf(stderr, "%.2f\tSEMI_TCP---RTS_DATA_ratio:\t%.2f\n", Scheduler::instance().clock(), RTS_DATA_ratio);
+		}
+		else if (curr_status == TCPStatus::SLOW_START)
+		{
+			fprintf(stderr, "%.2f\tSLOW_START---RTS_DATA_ratio:\t%.2f [%.2f, %.2f]\n", Scheduler::instance().clock(), RTS_DATA_ratio, min_RTS_DATA_ratio, max_RTS_DATA_ratio);
+			fprintf(stderr, "curr:\t%.2f\n", curr_send_rate/1000.0);
+		}
 		else if (curr_status == TCPStatus::SEARCHING)
 		{
-			fprintf(stderr, "SEARCHING----RTS_DATA_ratio:\t%.2f\ncurr:\t%.2f\ttop:\t%.2f\tbottom:\t%.2f\n",\
-					RTS_DATA_ratio, curr_send_rate/1000.0, top_send_rate/1000.0, bottom_send_rate/1000.0);
+			fprintf(stderr, "%.2f\tSEARCHING---RTS_DATA_ratio:\t%.2f [%.2f, %.2f]\n", Scheduler::instance().clock(), RTS_DATA_ratio, min_RTS_DATA_ratio, max_RTS_DATA_ratio);
+			fprintf(stderr, "curr:\t%.2f [%.2f, %.2f]\n", curr_send_rate/1000.0, bottom_send_rate/1000.0, top_send_rate/1000.0);
 		}
 		else
 		{
-			fprintf(stderr, "STABLE-------RTS_DATA_ratio:\t%.2f\ncurr:\t%.2f\ttop:\t%.2f\tbottom:\t%.2f\n",\
-					RTS_DATA_ratio, curr_send_rate/1000.0, top_send_rate/1000.0, bottom_send_rate/1000.0);		}
+			fprintf(stderr, "%.2f\tSTABLE---RTS_DATA_ratio:\t%.2f [%.2f, %.2f]\n", Scheduler::instance().clock(), RTS_DATA_ratio, min_RTS_DATA_ratio, max_RTS_DATA_ratio);
+			fprintf(stderr, "curr:\t%.2f\n", curr_send_rate/1000.0);			
+		}
 	}
 	
-	if (hit_the_max_send_rate)
+	if (hit_the_max_send_rate && curr_status != TCPStatus::SEMI_TCP)
 	{
 		curr_status = TCPStatus::SEARCHING;
 		top_send_rate = curr_send_rate;
-		bottom_send_rate = curr_send_rate / 2;
-		curr_send_rate = (top_send_rate + bottom_send_rate) / 2;
+		bottom_send_rate = 0;
+		curr_send_rate /= 2;
 		return; 	// WARNING: do not forget
 	}
 	
-	if (curr_status == TCPStatus::SLOW_START)
+	if (curr_status == TCPStatus::SEMI_TCP)
 	{
-		if (RTS_DATA_ratio < min_RTS_DATA_ratio)
-		{
-			curr_send_rate *= 2;
-		}
-		else if (RTS_DATA_ratio < max_RTS_DATA_ratio && inner_count > CONVERT_THRESHOLD)
+		curr_status = TCPStatus::SLOW_START;
+		max_send_rate = (1.0 / min_send_time) * 512 * 8;
+		curr_send_rate = max_send_rate / 2;
+		max_RTS_DATA_ratio = (RTS_DATA_ratio - 1) * MAX_RATIO + 1;
+		min_RTS_DATA_ratio = (RTS_DATA_ratio - 1) * MIN_RATIO + 1;
+		p_to_mac->curr_status = MACStatus::SEMI_TCP_RC;
+		buffer.clear();
+		below_count = 0;
+		above_count = 0;
+		inner_count = 0;
+		sendTimer_.resched(ConvertToTimeInterval(curr_send_rate));
+	}
+	else if (curr_status == TCPStatus::SLOW_START)
+	{
+		if (inner_count > CONVERT_THRESHOLD)
 		{
 			curr_status = TCPStatus::STABLE;
+		}
+		else if (RTS_DATA_ratio < min_RTS_DATA_ratio)
+		{
+			curr_send_rate *= 2;
+			if (curr_send_rate > max_send_rate)
+			{
+				curr_send_rate = max_send_rate;
+			}
 		}
 		else if (RTS_DATA_ratio > max_RTS_DATA_ratio)
 		{
 			curr_status = TCPStatus::SEARCHING;
 			top_send_rate = curr_send_rate;
-			bottom_send_rate = curr_send_rate / 2;
-			curr_send_rate = (top_send_rate + bottom_send_rate) / 2;
+			bottom_send_rate = 0;
+			curr_send_rate /= 2;
 		}
 		else
 		{
@@ -268,32 +271,40 @@ void MaTcpAgent::AdjustSendRate()
 	}
 	else if (curr_status == TCPStatus::SEARCHING)
 	{
-		if (RTS_DATA_ratio < min_RTS_DATA_ratio)
+		if (inner_count > CONVERT_THRESHOLD)
+		{
+			curr_status = TCPStatus::STABLE;
+		}
+		else if (RTS_DATA_ratio < min_RTS_DATA_ratio)
 		{
 			if (Abs(curr_send_rate - top_send_rate) < elips)
 			{
-				curr_status = TCPStatus::SLOW_START;
+				ConvertToSemiTCPStatus();
 			}
 			else
 			{
 				bottom_send_rate = curr_send_rate;				
 				curr_send_rate = (curr_send_rate + top_send_rate) / 2;
+				if (curr_send_rate > max_send_rate)
+				{
+					curr_send_rate = max_send_rate;
+				}
 			}
-		}
-		else if (RTS_DATA_ratio < max_RTS_DATA_ratio && inner_count > CONVERT_THRESHOLD)
-		{
-			curr_status = TCPStatus::STABLE;
 		}
 		else if (RTS_DATA_ratio > max_RTS_DATA_ratio)
 		{
 			if (Abs(curr_send_rate - bottom_send_rate) < elips)
 			{
-				curr_status = TCPStatus::SLOW_START;
-				curr_send_rate /= 2;
+				ConvertToSemiTCPStatus();
 			}
 			else
 			{
 				top_send_rate = curr_send_rate;
+				if (top_send_rate > max_send_rate)
+				{
+					top_send_rate = max_send_rate;
+				}
+				
 				curr_send_rate = (curr_send_rate + bottom_send_rate) / 2;
 			}
 		}
@@ -306,20 +317,32 @@ void MaTcpAgent::AdjustSendRate()
 	{
 		if (below_count > CONVERT_THRESHOLD)
 		{
-			curr_status = TCPStatus::SLOW_START;
+			ConvertToSemiTCPStatus();
 		}
 		else if (above_count > CONVERT_THRESHOLD)
 		{
 			curr_status = TCPStatus::SEARCHING;
 			top_send_rate = curr_send_rate;
-			bottom_send_rate = curr_send_rate / 2;		
-			curr_send_rate = (top_send_rate + bottom_send_rate) / 2;
+			bottom_send_rate = 0;		
+			curr_send_rate /= 2;
 		}
 		else
 		{
 			// NOTE: do nothing
 		}
 	}
+}
+
+void MaTcpAgent::SendDown()
+{
+	send_much(1, 0, 1);
+}
+void MaTcpAgent::ConvertToSemiTCPStatus()
+{
+	curr_status = TCPStatus::SEMI_TCP;
+	p_to_mac->curr_status = MACStatus::SEMI_TCP;
+	sendTimer_.force_cancel();
+	send_much(1, 0, 1);	
 }
 
 double MaTcpAgent::ConvertToTimeInterval(double send_rate) const
@@ -338,8 +361,13 @@ void MaTcpAgent::send_much(int force, int reason, int maxburst)
 	if (t_seqno_ == 0)
 		firstsent_ = Scheduler::instance().clock();
 	
-	// 有缓存限制,如果发送不出去
-	if (t_seqno_ < curseq_ && (t_seqno_ - highest_ack_) < unacked_size) {
+	if (needRetransmit) 	// 超时的数据包不是在超时的时候发送出去
+	{
+		retransmitCount++;
+		output(highest_ack_+1, TCP_REASON_DUPACK);
+		needRetransmit = false;
+	}	
+	else if (t_seqno_ < curseq_ && (t_seqno_ - highest_ack_) < unacked_size) {
 			output(t_seqno_, reason);
 			if (QOption_)
 				process_qoption_after_send () ; 
@@ -348,7 +376,7 @@ void MaTcpAgent::send_much(int force, int reason, int maxburst)
 		
 	/* call helper function */
 	send_helper(maxburst);
-	if (sendTimer_.status() == TIMER_IDLE)
+	if (sendTimer_.status() == TIMER_IDLE && curr_status != TCPStatus::SEMI_TCP)
 	{
 		double interval = ConvertToTimeInterval(curr_send_rate);
 		sendTimer_.resched(interval);
@@ -375,7 +403,11 @@ void MaTcpAgent::send_timeout()
 		//fprintf(stderr, "can not send\n");
 		buffer.push_back(STATUS::CAN_NOT_SEND);
 		can_not_send_count++;
-		sendTimer_.resched(interval);		
+		
+		if (curr_status != TCPStatus::SEMI_TCP)
+		{
+			sendTimer_.resched(interval);
+		}
 		can_send = false;
 	}
 	else
@@ -409,18 +441,13 @@ void MaTcpAgent::send_timeout()
 	{
 		return; 	// if can not send, just return
 	}
+
+	send_much(1, 0, 1); 	// send a new packet
 	
-	if (needRetransmit)
+	if (curr_status != TCPStatus::SEMI_TCP)
 	{
-		retransmitCount++;
-		output(highest_ack_+1, TCP_REASON_DUPACK);
-		needRetransmit = false;
+		sendTimer_.resched(interval);
 	}
-	else
-	{
-		send_much(1, 0, 1); 	// send a new packet
-	}
-	sendTimer_.resched(interval);
 }
 
 int MaTcpAgent::command ( int argc, const char*const* argv )

@@ -267,6 +267,11 @@ public:
 	u_int32_t	seqno;
 };
 
+enum class MACStatus
+{
+	SEMI_TCP,
+	SEMI_TCP_RC
+};
 
 /* ======================================================================
    The actual 802.11 MAC class.
@@ -304,6 +309,7 @@ public:
 		double receiveTime_;
 		double totalTime_;
 		int totalCount_;
+		MACStatus curr_status;
 		std::vector<std::pair<double, double>> send_time_vec;
 		
 		// RTS_Data_ratio

@@ -90,6 +90,14 @@ Mac802_11::checkBackoffTimer()
 		mhBackoff_.resume(phymib_.getDIFS());
 	if(! is_idle() && mhBackoff_.busy() && ! mhBackoff_.paused())
 		mhBackoff_.pause();
+	
+	if (curr_status == MACStatus::SEMI_TCP && p_to_tcp != nullptr)
+	{
+		if (!TotalCongested())
+		{
+			p_to_tcp->SendDown();
+		}
+	}
 }
 
 inline void
@@ -201,6 +209,7 @@ Mac802_11::Mac802_11() :
 	receiveTime_(0.0),
 	totalTime_(0.0),
 	totalCount_(0),
+	curr_status(MACStatus::SEMI_TCP),
 	RTS_DATA_ratio(0.0),
 	RTS_count(0),
 	DATA_count(0),
@@ -2138,9 +2147,11 @@ Mac802_11::recvACK(Packet *p)
 	{
 		RTS_DATA_ratio = RTS_count * 1.0 / DATA_count;
 		p_to_tcp->RTS_DATA_ratio = RTS_DATA_ratio;
-		p_to_tcp->AdjustSendRate();
 		
-		double now = Scheduler::instance().clock();
+		p_to_tcp->min_send_time = minSendTime_;
+		p_to_tcp->AdjustSendRate();		// 必须在传递了所有数据之后		
+		
+		double now = Scheduler::instance().clock();		
 		RTS_ratio_vec.push_back(std::make_pair(now, RTS_DATA_ratio));
 		// reflash the RTS and DATA statistics
 		RTS_count = 0;

@@ -67,6 +67,7 @@ private:
 
 enum class TCPStatus
 {
+	SEMI_TCP,
 	SLOW_START,
 	SEARCHING,
 	STABLE
@@ -81,11 +82,15 @@ public:
 		virtual void recv(Packet*, Handler*);
         int command(int argc, const char*const* argv);
 		void AdjustSendRate();
-	
+		void SendDown();
         double RTS_DATA_ratio;
+		double min_send_time;
+		
+private:
 		double min_RTS_DATA_ratio;
 		double max_RTS_DATA_ratio;
-
+		double max_send_rate;
+		
 protected:
         virtual void timeout(int tno);
 		virtual void dupack_action();
@@ -94,6 +99,7 @@ protected:
 		void send_timeout();
 		double ConvertToTimeInterval(double send_rate) const;
 		double Abs(double d) const;
+		void ConvertToSemiTCPStatus();
 		
 private:
         Mac802_11* p_to_mac;

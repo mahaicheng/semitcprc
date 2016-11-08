@@ -2109,14 +2109,13 @@ Mac802_11::recvACK(Packet *p)
 	{
 		slrc_ = 0;
 	}
-	
+		
 	if (HDR_CMN(pktTx_)->ptype() == PT_TCP && HDR_CMN(pktTx_)->size() > 300)
 	{
 		if (sendingDataSeqno_ == HDR_TCP(pktTx_)->seqno())
 		{
 			double now = Scheduler::instance().clock();
-			double interval = now - receiveTime_;
-		
+			double interval = now - receiveTime_;				
 			maxSendTime_ = std::max(maxSendTime_, interval);
 			minSendTime_ = std::min(minSendTime_, interval);
 		

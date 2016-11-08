@@ -147,6 +147,11 @@ void MaTcpAgent::recv(Packet *pkt, Handler *h)
 	 */
 	//if (valid_ack || aggressive_maxburst_)
 		//send_much(0, 0, maxburst_);
+		
+	if (curr_status == TCPStatus::SEMI_TCP && !p_to_mac->TotalCongested())
+	{
+		send_much(1, 0, 1);
+	}
 }
 
 double MaTcpAgent::Abs(double d) const
@@ -233,7 +238,7 @@ void MaTcpAgent::AdjustSendRate()
 	{
 		curr_status = TCPStatus::SLOW_START;
 		max_send_rate = (1.0 / min_send_time) * 512 * 8;
-		curr_send_rate = max_send_rate / 2;
+		curr_send_rate = max_send_rate / 4;
 		max_RTS_DATA_ratio = (RTS_DATA_ratio - 1) * MAX_RATIO + 1;
 		min_RTS_DATA_ratio = (RTS_DATA_ratio - 1) * MIN_RATIO + 1;
 		p_to_mac->curr_status = MACStatus::SEMI_TCP_RC;
@@ -277,7 +282,7 @@ void MaTcpAgent::AdjustSendRate()
 		}
 		else if (RTS_DATA_ratio < min_RTS_DATA_ratio)
 		{
-			if (Abs(curr_send_rate - top_send_rate) < elips)
+			if ((above_count > CONVERT_THRESHOLD || below_count > CONVERT_THRESHOLD) && Abs(curr_send_rate - top_send_rate) < elips)
 			{
 				ConvertToSemiTCPStatus();
 			}
@@ -293,7 +298,7 @@ void MaTcpAgent::AdjustSendRate()
 		}
 		else if (RTS_DATA_ratio > max_RTS_DATA_ratio)
 		{
-			if (Abs(curr_send_rate - bottom_send_rate) < elips)
+			if ((above_count > CONVERT_THRESHOLD || below_count > CONVERT_THRESHOLD) && Abs(curr_send_rate - bottom_send_rate) < elips)
 			{
 				ConvertToSemiTCPStatus();
 			}
@@ -315,16 +320,9 @@ void MaTcpAgent::AdjustSendRate()
 	}
 	else 	// curr_status == TCPStatus::STABLE
 	{
-		if (below_count > CONVERT_THRESHOLD)
+		if (below_count > CONVERT_THRESHOLD || above_count > CONVERT_THRESHOLD)
 		{
 			ConvertToSemiTCPStatus();
-		}
-		else if (above_count > CONVERT_THRESHOLD)
-		{
-			curr_status = TCPStatus::SEARCHING;
-			top_send_rate = curr_send_rate;
-			bottom_send_rate = 0;		
-			curr_send_rate /= 2;
 		}
 		else
 		{
@@ -393,7 +391,7 @@ void MaTcpAgent::send_timeout()
 {	
 	static deque<STATUS> buffer;
 	static const int STATUS_SIZE = 20;
-	static const int CAN_NOT_SEND_THRESHOLD = 10;
+	static const int CAN_NOT_SEND_THRESHOLD = 5;
 	static int can_not_send_count = 0;
 	
 	double interval = ConvertToTimeInterval(curr_send_rate);	

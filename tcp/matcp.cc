@@ -48,7 +48,8 @@
 
 using namespace std;
 
-static const int CONVERT_THRESHOLD = 7;
+static const int RESTART_THRESHOLD = 8;
+static const int STABLE_THRESHOLD = 5;
 static const int SAMPLE_COUNT = 10;
 static const double elips = 1000.0; 	// 1kbps
 static const double MAX_RATIO = 0.5;
@@ -241,6 +242,13 @@ void MaTcpAgent::AdjustSendRate()
 		curr_send_rate = max_send_rate / 4;
 		max_RTS_DATA_ratio = (RTS_DATA_ratio - 1) * MAX_RATIO + 1;
 		min_RTS_DATA_ratio = (RTS_DATA_ratio - 1) * MIN_RATIO + 1;
+		
+		if (min_RTS_DATA_ratio < 1.1) 	
+		{	// process the special condition while there is one hop.
+			min_RTS_DATA_ratio = 1.1;
+			max_RTS_DATA_ratio = 1.4;
+		}
+		
 		p_to_mac->curr_status = MACStatus::SEMI_TCP_RC;
 		buffer.clear();
 		below_count = 0;
@@ -250,7 +258,7 @@ void MaTcpAgent::AdjustSendRate()
 	}
 	else if (curr_status == TCPStatus::SLOW_START)
 	{
-		if (inner_count > CONVERT_THRESHOLD)
+		if (inner_count >= STABLE_THRESHOLD)
 		{
 			curr_status = TCPStatus::STABLE;
 		}
@@ -276,13 +284,13 @@ void MaTcpAgent::AdjustSendRate()
 	}
 	else if (curr_status == TCPStatus::SEARCHING)
 	{
-		if (inner_count > CONVERT_THRESHOLD)
+		if (inner_count >= STABLE_THRESHOLD)
 		{
 			curr_status = TCPStatus::STABLE;
 		}
 		else if (RTS_DATA_ratio < min_RTS_DATA_ratio)
 		{
-			if ((above_count > CONVERT_THRESHOLD || below_count > CONVERT_THRESHOLD) && Abs(curr_send_rate - top_send_rate) < elips)
+			if ((above_count >= RESTART_THRESHOLD || below_count >= RESTART_THRESHOLD) && Abs(curr_send_rate - top_send_rate) < elips)
 			{
 				ConvertToSemiTCPStatus();
 			}
@@ -298,7 +306,7 @@ void MaTcpAgent::AdjustSendRate()
 		}
 		else if (RTS_DATA_ratio > max_RTS_DATA_ratio)
 		{
-			if ((above_count > CONVERT_THRESHOLD || below_count > CONVERT_THRESHOLD) && Abs(curr_send_rate - bottom_send_rate) < elips)
+			if ((above_count >= RESTART_THRESHOLD || below_count >= RESTART_THRESHOLD) && Abs(curr_send_rate - bottom_send_rate) < elips)
 			{
 				ConvertToSemiTCPStatus();
 			}
@@ -320,7 +328,7 @@ void MaTcpAgent::AdjustSendRate()
 	}
 	else 	// curr_status == TCPStatus::STABLE
 	{
-		if (below_count > CONVERT_THRESHOLD || above_count > CONVERT_THRESHOLD)
+		if (below_count >= RESTART_THRESHOLD || above_count >= RESTART_THRESHOLD)
 		{
 			ConvertToSemiTCPStatus();
 		}
@@ -333,14 +341,20 @@ void MaTcpAgent::AdjustSendRate()
 
 void MaTcpAgent::SendDown()
 {
-	send_much(1, 0, 1);
+	if (!p_to_mac->TotalCongested())
+	{
+		send_much(1, 0, 1);
+	}
 }
 void MaTcpAgent::ConvertToSemiTCPStatus()
 {
 	curr_status = TCPStatus::SEMI_TCP;
 	p_to_mac->curr_status = MACStatus::SEMI_TCP;
 	sendTimer_.force_cancel();
-	send_much(1, 0, 1);	
+	if (!p_to_mac->TotalCongested())
+	{
+		send_much(1, 0, 1);
+	}
 }
 
 double MaTcpAgent::ConvertToTimeInterval(double send_rate) const
@@ -365,16 +379,26 @@ void MaTcpAgent::send_much(int force, int reason, int maxburst)
 		output(highest_ack_+1, TCP_REASON_DUPACK);
 		needRetransmit = false;
 	}	
-	else if (t_seqno_ < curseq_ && (t_seqno_ - highest_ack_) < unacked_size) {
+	else if (t_seqno_ < curseq_ && (t_seqno_ - highest_ack_) < unacked_size) 
+	{
 			output(t_seqno_, reason);
 			if (QOption_)
 				process_qoption_after_send () ; 
 			t_seqno_ ++ ;
 	}
+	else
+	{
+		//fprintf(stderr, "%.2f----------------------------------------TCP unable to send\n", Scheduler::instance().clock());
+	}
 		
 	/* call helper function */
 	send_helper(maxburst);
-	if (sendTimer_.status() == TIMER_IDLE && curr_status != TCPStatus::SEMI_TCP)
+	if (curr_status == TCPStatus::SEMI_TCP && sendTimer_.status() != TIMER_IDLE)
+	{
+		sendTimer_.force_cancel();
+	}
+	
+	if (curr_status != TCPStatus::SEMI_TCP && sendTimer_.status() == TIMER_IDLE)
 	{
 		double interval = ConvertToTimeInterval(curr_send_rate);
 		sendTimer_.resched(interval);
@@ -390,7 +414,7 @@ enum class STATUS
 void MaTcpAgent::send_timeout()
 {	
 	static deque<STATUS> buffer;
-	static const int STATUS_SIZE = 20;
+	static const int STATUS_SIZE = 10;
 	static const int CAN_NOT_SEND_THRESHOLD = 5;
 	static int can_not_send_count = 0;
 	
@@ -426,7 +450,7 @@ void MaTcpAgent::send_timeout()
 	}
 	
 	//fprintf(stderr, "can_not_send_count:\t%d\n", can_not_send_count);
-	if (can_not_send_count > CAN_NOT_SEND_THRESHOLD)
+	if (can_not_send_count >= CAN_NOT_SEND_THRESHOLD)
 	{
 		hit_the_max_send_rate = true;
 	}
@@ -540,6 +564,11 @@ void MaTcpAgent::timeout ( int tno )
 	else {
 		assert(0); 	// would not run to here
 		timeout_nonrtx(tno);
+	}
+	
+	if (curr_status == TCPStatus::SEMI_TCP && !p_to_mac->TotalCongested())
+	{
+		send_much(1, 0, 1);
 	}
 }
 

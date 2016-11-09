@@ -63,7 +63,7 @@
 #include<fstream>
 #endif
 
-static const int SAMPLE_COUNT = 20;
+static const int SAMPLE_COUNT = 10;
 
 /* our backoff timer doesn't count down in idle times during a
  * frame-exchange sequence as the mac tx state isn't idle; genreally

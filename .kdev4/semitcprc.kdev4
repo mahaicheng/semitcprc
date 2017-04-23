@@ -6,5 +6,14 @@ Name=GCC
 Path=gcc
 Type=GCC
 
+[Launch]
+Launch Configurations=Launch Configuration 0
+
+[Launch][Launch Configuration 0]
+Configured Launch Modes=execute
+Configured Launchers=nativeAppLauncher
+Name=新建 编译后的二进制文件 启动器
+Type=Native Application
+
 [Project]
 VersionControlSupport=kdevgit
